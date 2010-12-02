@@ -1,6 +1,6 @@
 import socket
 import request
-import json
+import simplejson as json
 
 HOST = 'reala.ece.ubc.ca'
 ANNOUNCE_PORT = 5630
