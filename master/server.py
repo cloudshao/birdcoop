@@ -2,34 +2,34 @@ import socket
 import SocketServer
 import threading
 import sqlite3
+import request
 import sys
 import json
+import urllib2
 
 u_id = ""
 
+craw_list = None
+normal_start = None
+lock = threading.RLock()
+clients = None
+# initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
+conn = sqlite3.connect("awesomeDB")
+cursor = conn.cursor() 
+pending_list = None
+responses = None
+
 class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
-	def __init__(self):
-		self.craw_list = selected_unfollowed_user(cursor)
-		self.normal_start = 1
-		if len(craw_list) == 0:
-			self.normal_start = 0;
-		self.lock = threading.RLock()
-		self.clients = {}
-		# initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
-		self.conn = sqlite3.connect("awesomeDB")
-		self.cursor = conn.cursor() 
-		self.start_id = u_id
 
 	def handle(self):
-		if self.normal_start == 0:
-			self.request.send(self.start_id)
-			self.normal_start = 1
+		if normal_start == 0:
+			self.request.send(u_id)
 			return
 			
 		print '**Worker Connection Received**'
 		try:
 			#lock because we only want to get the list once - otherwise we might overwrite it
-			self.lock.aquire()
+			lock.aquire()
 		
 			# add the client from the request to our dictionary of cliends
 			clients[self.request.getpeername()[0]] = 1;
@@ -37,33 +37,21 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			while len(crawl_list) == 0 :
 				#put data in database
 				#populate our crawl list
-				self.crawl_list = select_unfollowed_user(cursor);
+				crawl_list = select_unfollowed_user(cursor);
+				self.parse_data()
 		finally:
-			self.lock.release()
+			lock.release()
 		
 		user = crawl_list.pop()[0]
 		self.request.send(str(user))
-		self.pending_list.extend(user)
-	
-	def finish():
-		conn.close()
+		pending_list.extend(user)
 
+		#Parses the data for a series of users and puts it in the database
 
-class ReceiveDataHandler(SocketServer.BaseRequestHandler):
-	def handle(self):
-		buf = self.request.recv(1024)
-		data = ''
-		while buf:
-			data = data + buf
-			buf = self.request.recv(1024)
-		self.responses.extend(data)
-			
-		 
-	#Parses the data for a series of users and puts it in the database
-	def parse_data_(cursor) :
+	def parse_data() :
 		# Each machine can only crawl 150 followers per hour, so track the number of users crawled
 		# Depending on the rate responses come in, we may need to lock so that we don't loop infinitely
-		while len(self.responses) > 0 :
+		while len(responses) > 0 :
 			user_data = json.loads(response.pop())
 			user_id = user_data['user']	
 			follower_data = user_data['followers']
@@ -96,6 +84,17 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 			insert_user_crawled(cursor, user_id, 1)
 		# write everything we have added to disk
 		cursor.commit()
+
+
+class ReceiveDataHandler(SocketServer.BaseRequestHandler):
+	def handle(self):
+		buf = self.request.recv(1024)
+		data = ''
+		while buf:
+			data = data + buf
+			buf = self.request.recv(1024)
+		responses.extend(data)
+			
 	
 
 # finds a users which are not crawlwed and returns them
@@ -216,10 +215,22 @@ def drop_tables(cursor) :
 		cursor.execute("Drop table 'tweet_table'")
 
 if __name__ == '__main__':
+	# initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
+	conn = sqlite3.connect("awesomeDB")
+	cursor = conn.cursor() 	
+
 	for arg in sys.argv: 
 		name = arg
 		if name != "server.py" :  #Is the arg actaully a username, or this file's name? - Can't find way to get filename from inside code - hopefully we don't rename
 			u_id = name
+
+	craw_list = select_unfollowed_users(cursor)
+	normal_start = 1
+	if len(craw_list) == 0:
+		normal_start = 0;
+	clients = {}
+
+	start_id = u_id
 
 	user_server_tupple = socket.gethostname(), 5630
 	get_user_server  = SocketServer.TCPServer(user_server_tupple, GetPersonToCrawlHandler)
@@ -243,3 +254,4 @@ if __name__ == '__main__':
 	
 	sys.stdin.readline()
 	
+	conn.close()
