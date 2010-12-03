@@ -2,10 +2,8 @@ import socket
 import SocketServer
 import threading
 import sqlite3
-import request
 import sys
 import json
-import urllib2
 
 u_id = ""
 
