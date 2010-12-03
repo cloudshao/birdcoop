@@ -7,18 +7,27 @@ import sys
 import json
 import urllib2
 
+u_id = ""
 
 class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 	def __init__(self):
+		self.craw_list = selected_unfollowed_user(cursor)
+		self.normal_start = 1
+		if len(craw_list) == 0:
+			self.normal_start = 0;
+		self.lock = threading.RLock()
+		self.clients = {}
 		# initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
 		self.conn = sqlite3.connect("awesomeDB")
 		self.cursor = conn.cursor() 
-		init(cursor)
-		self.craw_list = selected_unfollowed_user(cursor)
-		self.lock = threading.RLock()
-		self.clients = {}
-		
+		self.start_id = u_id
+
 	def handle(self):
+		if self.normal_start == 0:
+			self.request.send(self.start_id)
+			self.normal_start = 1
+			return
+			
 		print '**Worker Connection Received**'
 		try:
 			#lock because we only want to get the list once - otherwise we might overwrite it
@@ -27,7 +36,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			# add the client from the request to our dictionary of cliends
 			clients[self.request.getpeername()[0]] = 1;
 		
-			if len(crawl_list) == 0 :
+			while len(crawl_list) == 0 :
 				#put data in database
 				#populate our crawl list
 				self.crawl_list = select_unfollowed_user(cursor);
@@ -37,6 +46,9 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		user = crawl_list.pop()[0]
 		self.request.send(str(user))
 		self.pending_list.extend(user)
+	
+	def finish():
+		conn.close()
 
 
 class ReceiveDataHandler(SocketServer.BaseRequestHandler):
@@ -206,6 +218,11 @@ def drop_tables(cursor) :
 		cursor.execute("Drop table 'tweet_table'")
 
 if __name__ == '__main__':
+	for arg in sys.argv: 
+		name = arg
+		if name != "server.py" :  #Is the arg actaully a username, or this file's name? - Can't find way to get filename from inside code - hopefully we don't rename
+			u_id = name
+
 	user_server_tupple = socket.gethostname(), 5630
 	get_user_server  = SocketServer.TCPServer(user_server_tupple, GetPersonToCrawlHandler)
 
@@ -224,6 +241,7 @@ if __name__ == '__main__':
 	recv_data_thread.start()
 	print "Server's started and waiting for input"
 	print "Press <Enter> to exit"
+
 	
 	sys.stdin.readline()
 	
