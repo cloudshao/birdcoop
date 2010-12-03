@@ -128,7 +128,7 @@ u_id = ""
 # initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
 conn = sqlite3.connect("awesomeDB")
 cursor = conn.cursor() 
-drop_tables(cursor)
+#drop_tables(cursor)
 init(cursor)
 crawl_list  = select_unfollowed_users(cursor)
 
