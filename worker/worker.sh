@@ -1,4 +1,6 @@
 #!/bin/bash
 
 killall python
-python worker.py > worker.out 2> worker.out
+
+date >> worker.out
+python worker.py >> worker.out 2>> worker.out
