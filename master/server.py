@@ -145,6 +145,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
 	def handle(self):
 		global normal_start 
+		global pending_list
 		if normal_start == 0:
 			self.request.send(u_id)
 			normal_start = 1
@@ -154,7 +155,6 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		print '**Worker Connection Received**'
 		global lock
 		global crawl_list
-		global pending_list
 		#lock because we only want to get the list once - otherwise we might overwrite it
 		lock.acquire()
 		try:
@@ -183,11 +183,13 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		# Each machine can only crawl 150 followers per hour, so track the number of users crawled
 		# Depending on the rate responses come in, we may need to lock so that we don't loop infinitely
 		while len(responses) > 0 :
+			global pending_list
 			#user_data = json.loads(responses.pop())
 			user_data = responses.pop()
 			print "Responses" + str(responses)
-			user_id = user_data['user']	
-			pending_list.remove(user_id)
+			user_id = user_data['user']
+			if pending_list.count(user_id) > 0:	
+				pending_list.remove(user_id)
 			follower_data = user_data['followers']
 			print "Beginning parsing data for user " + str(user_id)
 			# Get the the json user data from twitter, and load it into something we can use
@@ -235,7 +237,8 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 		self.request.close()
 		#print data
 	
-
+class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+	pass
 
 
 
@@ -254,11 +257,11 @@ if __name__ == '__main__':
 	start_id = u_id
 
 	user_server_tupple = socket.gethostname(), 5630
-	get_user_server  = SocketServer.TCPServer(user_server_tupple, GetPersonToCrawlHandler)
+	get_user_server  = ThreadedTCPServer(user_server_tupple, GetPersonToCrawlHandler)
 
 	print "Get user server created at port 5630"
 	recv_data_server_tupple = socket.gethostname(), 5631
-	recv_data_server = SocketServer.TCPServer(recv_data_server_tupple, ReceiveDataHandler)
+	recv_data_server = ThreadedTCPServer(recv_data_server_tupple, ReceiveDataHandler)
 
 	print "Receive server created at port 5631"
 	get_user_thread = threading.Thread(target = get_user_server.serve_forever)
@@ -274,5 +277,4 @@ if __name__ == '__main__':
 
 	
 	sys.stdin.readline()
-	
 	conn.close()
