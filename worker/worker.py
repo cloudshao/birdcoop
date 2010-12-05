@@ -1,6 +1,7 @@
+import simplejson as json
 import socket
 import request
-import simplejson as json
+import urllib2
 
 HOST = 'reala.ece.ubc.ca'
 ANNOUNCE_PORT = 5630
@@ -22,6 +23,14 @@ for i in range(2):
       sock.connect((HOST, REPLY_PORT))
       sock.send(response)
       sock.close()
+
+      print 'total: ' + str(i) + ', just crawled: ' + user
+
+   except urllib2.HTTPError, e:
+      if e.code == 401:
+         pass
+      else:
+         raise
 
    except socket.error, e:
       print e
