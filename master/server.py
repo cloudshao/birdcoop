@@ -1,5 +1,6 @@
 import socket
 import SocketServer
+import string
 import threading
 import sqlite3
 import sys
@@ -275,6 +276,14 @@ if __name__ == '__main__':
 	print "Server's started and waiting for input"
 	print "Press <Enter> to exit"
 
-	
-	sys.stdin.readline()
+	line = sys.stdin.readline()
+	while line.strip():
+		if 'workers' in line:
+			print 'unique workers seen: ' + str(len(clients))
+			for k in clients:
+				print k
+		else:
+			print 'Did not understand your command'
+		line = sys.stdin.readline()
+
 	conn.close()
