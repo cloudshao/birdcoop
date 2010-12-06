@@ -127,11 +127,12 @@ def insert_tweet(cursor, user_id, time, tweet) :
 u_id = ""
 
 # initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
-conn = sqlite3.connect("awesomeDB")
+conn = sqlite3.connect("awesomeDB2")
 cursor = conn.cursor() 
 #drop_tables(cursor)
 init(cursor)
 crawl_list  = select_unfollowed_users(cursor)
+crawl_count = 0
 
 conn.close()
 
@@ -147,6 +148,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global normal_start 
 		global pending_list
+		global crawl_count
 		if normal_start == 0:
 			self.request.send(u_id)
 			normal_start = 1
@@ -163,10 +165,11 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			# add the client from the request to our dictionary of cliends
 			clients[self.request.getpeername()[0]] = 1;
 		
-			while len(crawl_list) == 0 :
+			while len(crawl_list) == 0 or crawl_count > 500:
 				#put data in database
 				#populate our crawl list
-				self.conn = sqlite3.connect("awesomeDB")
+				print "Populating db"
+				self.conn = sqlite3.connect("awesomeDB2")
 				self.cursor = self.conn.cursor() 
 				crawl_list = select_unfollowed_users(self.cursor);
 				self.parse_data()
@@ -181,6 +184,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		#Parses the data for a series of users and puts it in the database
 
 	def parse_data(self) :
+		global crawl_count
 		# Each machine can only crawl 150 followers per hour, so track the number of users crawled
 		# Depending on the rate responses come in, we may need to lock so that we don't loop infinitely
 		while len(responses) > 0 :
@@ -220,11 +224,14 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			# This user with username user_name has now been crawled
 			insert_user_crawled(self.cursor, user_id, 1)
 		# write everything we have added to disk
+		crawl_count = 0
 		self.conn.commit()
 
 
 class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
+		global crawl_count
+		crawl_count = crawl_count+1
 		print "Followers received on server"
 		buf = self.request.recv(1024)
 		data = ''
