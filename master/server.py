@@ -165,14 +165,17 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			# add the client from the request to our dictionary of cliends
 			clients[self.request.getpeername()[0]] = 1;
 		
-			while len(crawl_list) == 0 or crawl_count > 500:
+			if len(crawl_list) == 0 or crawl_count > 500:
 				#put data in database
 				#populate our crawl list
 				self.conn = sqlite3.connect("awesomeDB2")
-				self.cursor = self.conn.cursor() 
-				crawl_list = select_unfollowed_users(self.cursor);
+				self.cursor = self.conn.cursor()
 				self.parse_data()
+				while len(crawl_list) == 0:
+					crawl_list = select_unfollowed_users(self.cursor);
 				self.conn.close()
+					
+				
 		finally:
 			lock.release()
 		
