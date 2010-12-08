@@ -208,42 +208,41 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		# Depending on the rate responses come in, we may need to lock so that we don't loop infinitely
 		while len(responses) > 0 :
 			global pending_list
-			#user_data = json.loads(responses.pop())
 			user_data = responses.pop()
-			#print "Responses" + str(responses)
 			user_id = user_data['user']
 			if pending_list.count(user_id) > 0:	
 				pending_list.remove(user_id)
 			follower_data = user_data['followers']
-			#print "Beginning parsing data for user " + str(user_id)
-			# Get the the json user data from twitter, and load it into something we can use
 			for user in follower_data :
-				#print 'This is a follower with name ' + user['name']
-				insert_user(self.cursor, user['id'], user['name'], user['location'], user['description']) # insert the users data into our user_table
-				insert_user_crawled(self.cursor, user['id'], 0) # AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
-				insert_follower(self.cursor, user_id, user['id']) # this user follows user_name - insert him/her in follower_table
+				# insert the users data into our user_table
+				insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
+				# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
+				insert_user_crawled(self.cursor, user['id'], 0)
+				# this user follows user_name - insert him/her in follower_table
+				insert_follower(self.cursor, user_id, user['id'])
 				try: 
-					#print "inserting tweet for " + str(user['id'])
 					insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
 				except KeyError:
-					# User does not have a status - so we caught a keyError
-					#print "User has no tweets
-					i = 1
+					# User does not have a status
+					pass
+
 			followee_data = user_data['followees']
 			for user in followee_data:
-				#print 'This is a followee with name ' + user['name']
-				insert_user(self.cursor, user['id'], user['name'], user['location'], user['description']) # insert the users data into our user_table
-				insert_user_crawled(self.cursor, user['id'], 0) # AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
-				insert_follower(self.cursor, user['id'], user_id) # this user follows user_name - insert him/her in follower_table
+				# insert the users data into our user_table
+				insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
+				# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
+				insert_user_crawled(self.cursor, user['id'], 0)
+				# this user follows user_name - insert him/her in follower_table
+				insert_follower(self.cursor, user['id'], user_id)
 				try: 
-					#print "inserting tweet for " + str(user['id'])
 					insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
 				except KeyError:
-					i = 1
-					# User does not have a status - so we caught a keyError
-					#print "User has no tweets"
+					# User does not have a status
+					pass
+
 			# This user with username user_name has now been crawled
 			insert_user_crawled(self.cursor, user_id, 1)
+
 		# write everything we have added to disk
 		crawl_count = 0
 		self.conn.commit()
