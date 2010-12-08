@@ -2,6 +2,7 @@ import socket
 import SocketServer
 import string
 import threading
+import time
 import sqlite3
 import sys
 import simplejson as json
@@ -139,9 +140,24 @@ conn.close()
 
 normal_start = 0
 lock = threading.RLock()
-clients = None
 pending_list = []
 responses = []
+
+# Variables to keep track of some stats
+clients = None
+rate_history = []
+rate = 0
+
+def rate_tracker_thread():
+
+	global rate
+	time.sleep(60*60)
+
+	# Save the rate from the past hour
+	rate_history.append(rate)
+
+	# Restart the counter
+	rate = 0
 
 class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
@@ -237,6 +253,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global crawl_count
+		global rate
 		crawl_count = crawl_count+1
 		print "Followers received on server"
 		buf = self.request.recv(1024)
@@ -249,6 +266,7 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 		responses.append(response)
 		print "Followers received on server"
 		self.request.close()
+		rate = rate + 1
 		#print data
 	
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -289,12 +307,20 @@ if __name__ == '__main__':
 	print "Server's started and waiting for input"
 	print "Press <Enter> to exit"
 
+	# Start a thread to keep track of hourly crawl rate
+	threading.Thread(target=rate_tracker_thread)
+
 	line = sys.stdin.readline()
 	while line.strip():
 		if 'workers' in line:
-			print 'unique workers seen: ' + str(len(clients))
 			for k in clients:
 				print k
+			print 'unique workers seen: ' + str(len(clients))
+		elif 'rate' in line:
+			print 'rates:'
+			for r in rate_history:
+				print r
+			print 'returns this hour: ' + str(rate)
 		else:
 			print 'Did not understand your command'
 		line = sys.stdin.readline()
