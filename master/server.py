@@ -210,35 +210,41 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			global pending_list
 			user_data = responses.pop()
 			user_id = user_data['user']
-			if pending_list.count(user_id) > 0:	
-				pending_list.remove(user_id)
-			follower_data = user_data['followers']
-			for user in follower_data :
-				# insert the users data into our user_table
-				insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
-				# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
-				insert_user_crawled(self.cursor, user['id'], 0)
-				# this user follows user_name - insert him/her in follower_table
-				insert_follower(self.cursor, user_id, user['id'])
-				try: 
-					insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
-				except KeyError:
-					# User does not have a status
-					pass
+			
+			# Remove the returned user_id from pending list
+			pending_list = [v for v in pending_list if v != user_id]
 
-			followee_data = user_data['followees']
-			for user in followee_data:
-				# insert the users data into our user_table
-				insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
-				# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
-				insert_user_crawled(self.cursor, user['id'], 0)
-				# this user follows user_name - insert him/her in follower_table
-				insert_follower(self.cursor, user['id'], user_id)
-				try: 
-					insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
-				except KeyError:
-					# User does not have a status
-					pass
+			# Response doesn't have followers if user was private
+			if 'followers' in user_data:
+				follower_data = user_data['followers']
+				for user in follower_data :
+					# insert the users data into our user_table
+					insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
+					# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
+					insert_user_crawled(self.cursor, user['id'], 0)
+					# this user follows user_name - insert his/her in followers
+					insert_follower(self.cursor, user_id, user['id'])
+					try: 
+						insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
+					except KeyError:
+						# User does not have a status
+						pass
+
+			# Response doesn't have followees if user was private
+			if 'followees' in user_data:
+				followee_data = user_data['followees']
+				for user in followee_data:
+					# insert the users data into our user_table
+					insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
+					# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
+					insert_user_crawled(self.cursor, user['id'], 0)
+					# this user follows user_name - insert him/her in follower_table
+					insert_follower(self.cursor, user['id'], user_id)
+					try: 
+						insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
+					except KeyError:
+						# User does not have a status
+						pass
 
 			# This user with username user_name has now been crawled
 			insert_user_crawled(self.cursor, user_id, 1)
