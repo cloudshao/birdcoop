@@ -313,7 +313,6 @@ if __name__ == '__main__':
 	get_user_thread.start()
 	recv_data_thread.start()
 	print "Server's started and waiting for input"
-	print "Press <Enter> to exit"
 
 	# Start a thread to keep track of hourly crawl rate
 	threading.Thread(target=rate_tracker_thread).start()
