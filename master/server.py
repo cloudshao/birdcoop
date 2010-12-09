@@ -146,20 +146,20 @@ responses = []
 # Variables to keep track of some stats
 clients = None
 rate_history = []
-rate = 0
+connection_rate, response_rate = 0, 0
 
 def rate_tracker_thread():
 
-	global rate
+	global connection_rate, response_rate
 	while True:
 		# Every hour
 		time.sleep(60*60)
 
 		# Save the rate from the past hour
-		rate_history.append(rate)
+		rate_history.append((connection_rate, response_rate))
 
 		# Restart the counter
-		rate = 0
+		connection_rate, response_rate = 0, 0
 
 class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
@@ -176,6 +176,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		print '**Worker Connection Received**'
 		global lock
 		global crawl_list
+		global connection_rate
 		#lock because we only want to get the list once - otherwise we might overwrite it
 		lock.acquire()
 		try:
@@ -200,6 +201,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		user = crawl_list.pop()[0]
 		self.request.send(str(user))
 		pending_list.append(user)
+		connection_rate = connection_rate + 1
 
 		#Parses the data for a series of users and puts it in the database
 
@@ -260,7 +262,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global crawl_count
-		global rate
+		global response_rate
 		crawl_count = crawl_count+1
 		print "Crawl results connection received"
 		buf = self.request.recv(1024)
@@ -273,8 +275,7 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 		responses.append(response)
 		print "Followers received on server"
 		self.request.close()
-		rate = rate + 1
-		#print data
+		response_rate = response_rate + 1
 	
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 	pass
@@ -327,7 +328,8 @@ if __name__ == '__main__':
 			print 'rates:'
 			for r in rate_history:
 				print r
-			print 'returns this hour: ' + str(rate)
+			print ('connections, responses this hour: ' +
+			       str(connection_rate) + ', ' + str(response_rate))
 		elif 'exit' in line:
 			conn.close()
 			sys.exit()
