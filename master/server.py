@@ -151,13 +151,15 @@ rate = 0
 def rate_tracker_thread():
 
 	global rate
-	time.sleep(60*60)
+	while True:
+		# Every hour
+		time.sleep(60*60)
 
-	# Save the rate from the past hour
-	rate_history.append(rate)
+		# Save the rate from the past hour
+		rate_history.append(rate)
 
-	# Restart the counter
-	rate = 0
+		# Restart the counter
+		rate = 0
 
 class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
@@ -260,7 +262,7 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 		global crawl_count
 		global rate
 		crawl_count = crawl_count+1
-		print "Followers received on server"
+		print "Crawl results connection received"
 		buf = self.request.recv(1024)
 		data = ''
 		while buf:
@@ -313,10 +315,10 @@ if __name__ == '__main__':
 	print "Press <Enter> to exit"
 
 	# Start a thread to keep track of hourly crawl rate
-	threading.Thread(target=rate_tracker_thread)
+	threading.Thread(target=rate_tracker_thread).start()
 
-	line = sys.stdin.readline()
-	while line.strip():
+	while True:
+		line = sys.stdin.readline()
 		if 'workers' in line:
 			for k in clients:
 				print k
@@ -326,8 +328,11 @@ if __name__ == '__main__':
 			for r in rate_history:
 				print r
 			print 'returns this hour: ' + str(rate)
+		elif 'exit' in line:
+			conn.close()
+			sys.exit()
+		elif not line.strip():
+			print 'type "exit" to terminate'
 		else:
 			print 'Did not understand your command'
-		line = sys.stdin.readline()
 
-	conn.close()
