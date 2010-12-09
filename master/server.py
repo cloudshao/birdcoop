@@ -146,18 +146,20 @@ responses = []
 # Variables to keep track of some stats
 clients = None
 rate_history = []
-rate = 0
+connection_rate, response_rate = 0, 0
 
 def rate_tracker_thread():
 
-	global rate
-	time.sleep(60*60)
+	global connection_rate, response_rate
+	while True:
+		# Every hour
+		time.sleep(60*60)
 
-	# Save the rate from the past hour
-	rate_history.append(rate)
+		# Save the rate from the past hour
+		rate_history.append((connection_rate, response_rate))
 
-	# Restart the counter
-	rate = 0
+		# Restart the counter
+		connection_rate, response_rate = 0, 0
 
 class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
@@ -174,6 +176,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		print '**Worker Connection Received**'
 		global lock
 		global crawl_list
+		global connection_rate
 		#lock because we only want to get the list once - otherwise we might overwrite it
 		lock.acquire()
 		try:
@@ -198,6 +201,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		user = crawl_list.pop()[0]
 		self.request.send(str(user))
 		pending_list.append(user)
+		connection_rate = connection_rate + 1
 
 		#Parses the data for a series of users and puts it in the database
 
@@ -210,35 +214,41 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			global pending_list
 			user_data = responses.pop()
 			user_id = user_data['user']
-			if pending_list.count(user_id) > 0:	
-				pending_list.remove(user_id)
-			follower_data = user_data['followers']
-			for user in follower_data :
-				# insert the users data into our user_table
-				insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
-				# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
-				insert_user_crawled(self.cursor, user['id'], 0)
-				# this user follows user_name - insert him/her in follower_table
-				insert_follower(self.cursor, user_id, user['id'])
-				try: 
-					insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
-				except KeyError:
-					# User does not have a status
-					pass
+			
+			# Remove the returned user_id from pending list
+			pending_list = [v for v in pending_list if v != user_id]
 
-			followee_data = user_data['followees']
-			for user in followee_data:
-				# insert the users data into our user_table
-				insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
-				# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
-				insert_user_crawled(self.cursor, user['id'], 0)
-				# this user follows user_name - insert him/her in follower_table
-				insert_follower(self.cursor, user['id'], user_id)
-				try: 
-					insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
-				except KeyError:
-					# User does not have a status
-					pass
+			# Response doesn't have followers if user was private
+			if 'followers' in user_data:
+				follower_data = user_data['followers']
+				for user in follower_data :
+					# insert the users data into our user_table
+					insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
+					# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
+					insert_user_crawled(self.cursor, user['id'], 0)
+					# this user follows user_name - insert his/her in followers
+					insert_follower(self.cursor, user_id, user['id'])
+					try: 
+						insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
+					except KeyError:
+						# User does not have a status
+						pass
+
+			# Response doesn't have followees if user was private
+			if 'followees' in user_data:
+				followee_data = user_data['followees']
+				for user in followee_data:
+					# insert the users data into our user_table
+					insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
+					# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
+					insert_user_crawled(self.cursor, user['id'], 0)
+					# this user follows user_name - insert him/her in follower_table
+					insert_follower(self.cursor, user['id'], user_id)
+					try: 
+						insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
+					except KeyError:
+						# User does not have a status
+						pass
 
 			# This user with username user_name has now been crawled
 			insert_user_crawled(self.cursor, user_id, 1)
@@ -252,9 +262,9 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global crawl_count
-		global rate
+		global response_rate
 		crawl_count = crawl_count+1
-		print "Followers received on server"
+		print "Crawl results connection received"
 		buf = self.request.recv(1024)
 		data = ''
 		while buf:
@@ -265,8 +275,7 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 		responses.append(response)
 		print "Followers received on server"
 		self.request.close()
-		rate = rate + 1
-		#print data
+		response_rate = response_rate + 1
 	
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 	pass
@@ -307,10 +316,10 @@ if __name__ == '__main__':
 	print "Press <Enter> to exit"
 
 	# Start a thread to keep track of hourly crawl rate
-	threading.Thread(target=rate_tracker_thread)
+	threading.Thread(target=rate_tracker_thread).start()
 
-	line = sys.stdin.readline()
-	while line.strip():
+	while True:
+		line = sys.stdin.readline()
 		if 'workers' in line:
 			for k in clients:
 				print k
@@ -319,9 +328,13 @@ if __name__ == '__main__':
 			print 'rates:'
 			for r in rate_history:
 				print r
-			print 'returns this hour: ' + str(rate)
+			print ('connections, responses this hour: ' +
+			       str(connection_rate) + ', ' + str(response_rate))
+		elif 'exit' in line:
+			conn.close()
+			sys.exit()
+		elif not line.strip():
+			print 'type "exit" to terminate'
 		else:
 			print 'Did not understand your command'
-		line = sys.stdin.readline()
 
-	conn.close()
