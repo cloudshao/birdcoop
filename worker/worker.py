@@ -3,7 +3,7 @@ import socket
 import request
 import urllib2
 
-HOST = 'air.local'
+HOST = 'reala.ece.ubc.ca'
 ANNOUNCE_PORT = 5630
 REPLY_PORT = 5631
 
