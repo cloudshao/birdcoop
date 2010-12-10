@@ -220,7 +220,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			user_id = user_data['user']
 			
 			# Remove the returned user_id from pending list
-			pending_list = [v for v in pending_list if v != user_id]
+			pending_list = [v for v in pending_list if v == user_id]
 
 			# Response doesn't have followers if user was private
 			if 'followers' in user_data:
