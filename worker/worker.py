@@ -7,7 +7,7 @@ HOST = 'reala.ece.ubc.ca'
 ANNOUNCE_PORT = 5630
 REPLY_PORT = 5631
 
-for i in range(30):
+for i in range(150):
    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
    sock.connect((HOST, ANNOUNCE_PORT))
    user = sock.recv(1024)
