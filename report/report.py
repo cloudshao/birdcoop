@@ -18,18 +18,29 @@ def makePopNameTable(cursor, index):
 	index.write('<table border = 1>')
 	insertCol('Name', index)
 	insertCol('Occurrence', index)
+	names = []
+	freq = []
 	for row in cursor:
 		index.write('<tr><td>')
-		index.write(row[0])
+		try:
+			index.write(row[0])
+			names.append(row[0])
+		except:
+			index.write("Cannot write name")
+			names.append("Invalid name")
 		index.write('</td><td>')
 		index.write(str(row[1]))
+		freq.append(str(row[1]))
 		index.write('</td></tr>')		
-	index.write('</table><br/><br/>')
+	index.write('</table><br/>')
+	
+	script = '<script type="text/javascript"> graph = new BAR_GRAPH("hBar"); graph.values = "' + freq[0] + ',' + freq[1] + ',' + freq[2] + ',' + freq[3] + ',' + freq[4] + ',' + freq[5] + ',' + freq[6] + ',' + freq[7] + ',' + freq[8] + ',' + freq[9] + '"; graph.labels = "' + names[0] + ',' + names[1] + ',' + names[2] + ',' + names[3] + ',' + names[4] + ',' + names[5] + ',' + names[6] + ',' + names[7] + ',' + names[8] + ',' + names[9] + '"; document.write(graph.create()); </script><br/><br/>'
+	index.write(script)
 
 def getPopularName(index):
 	#select the most popular name 
-	print "Getting the most popular name"
-	cursor.execute('select name, count(*) from user_table group by name having count(*) order by count(*) desc limit 5')
+	print "Getting the most popular name from pool of 20,000 randomly chosen users"
+	cursor.execute('select name, count(*) from user_table group by name having count(*) order by count(*) desc limit 10')
 	makePopNameTable(cursor, index)
 	firstOne = []
 	firstTwo = []
@@ -86,7 +97,11 @@ def getBots(index):
 	index.write(str(celebrities))
 	index.write('<tr><td>totalUsers</td><td>')
 	index.write(str(totalUsers))
-	index.write('</td></tr></table><br/><br/>')
+	index.write('</td></tr></table><br/>')
+	script = '<script type="text/javascript"> graph = new BAR_GRAPH("hBar"); graph.values = "' + str(bots) + ',' + str(celebrities) + ',' + str(totalUsers) + '"; graph.labels = "Bots, Celebrities, Total Users"; document.write(graph.create()); </script><br/><br/>'
+	
+	
+	index.write(script)
 	#print bots
 	#print celebrities
 	#print totalUsers		
@@ -95,7 +110,7 @@ def getCommonLocations(index):
 	location = []
 	index.write('Trend of locations of Twitter<br/>')
 	index.write('<table border = 1>')
-	index.write('<tr><td>Start</td><td>Followed</td></tr>')
+	index.write('<tr><td>Followees</td><td>Followed</td></tr>')
 	print "getting locations"
 	cursor.execute('select location, count(*) from user_table group by location having count(*) order by count(*) desc limit 10')
 	for row in cursor:
@@ -123,7 +138,7 @@ def getCommonLocations(index):
 	index.write('</table><br/><br/>')
 
 def buildHeader(index):
-	index.write('<html><head><title>Twitter results</title></head><body><h3>Twitter Results </h3>')
+	index.write('<html><head><title>Twitter results</title></head><body><h3>Twitter Results </h3> <script type="text/javascript" src="graphs.js"></script>')
 	return
    
 def buildFooter(index):
@@ -134,6 +149,7 @@ def buildFooter(index):
 index = open('index.html', 'w')
 buildHeader(index)
 conn = sqlite3.connect("awesomeDB")
+conn.text_factory = str
 cursor = conn.cursor()
 cursor2 = conn.cursor() 
 cursor3 = conn.cursor()
