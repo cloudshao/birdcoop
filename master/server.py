@@ -327,8 +327,8 @@ if __name__ == '__main__':
 			print ('connections, responses this hour: ' +
 			       str(connection_rate) + ', ' + str(response_rate))
 		elif 'lists' in line:
-			print 'crawl_list: ' + len(crawl_list)
-			print 'responses: ' + len(responses)
+			print 'crawl_list: ' + str(len(crawl_list))
+			print 'responses: ' + str(len(responses))
 		elif 'heap' in line:
 			print guppy.hpy().heap()
 		elif 'exit' in line:
