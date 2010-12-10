@@ -177,6 +177,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		global lock
 		global crawl_list
 		global connection_rate
+
 		#lock because we only want to get the list once - otherwise we might overwrite it
 		lock.acquire()
 		try:
@@ -190,21 +191,23 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 				self.conn = sqlite3.connect("awesomeDB2")
 				self.cursor = self.conn.cursor()
 				self.parse_data()
-				while len(crawl_list) == 0:
+				if len(crawl_list) == 0:
 					crawl_list = select_unfollowed_users(self.cursor);
 				self.conn.close()
-					
 				
 		finally:
 			lock.release()
-		
-		user = crawl_list.pop()[0]
+	
+		if crawl_list:
+			user = crawl_list.pop()[0]
+		else:
+			user = 0
 		self.request.send(str(user))
+		self.request.close()
 		pending_list.append(user)
 		connection_rate = connection_rate + 1
 
-		#Parses the data for a series of users and puts it in the database
-
+	#Parses the data for a series of users and puts it in the database
 	def parse_data(self) :
 		global crawl_count
 		print "About to parse data and populate the database"
