@@ -175,7 +175,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			normal_start = 1
 			return
 			
-		print '**Worker Connection Received**'
+		#print '**Worker Connection Received**'
 		global lock
 		global crawl_list
 		global connection_rate
