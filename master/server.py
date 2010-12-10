@@ -151,6 +151,8 @@ responses = []
 clients = None
 rate_history = []
 connection_rate, response_rate = 0, 0
+announce_count = 0
+response_count = 0
 
 def rate_tracker_thread():
 
@@ -170,6 +172,8 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global normal_start 
 		global crawl_count
+		global announce_count
+		announce_count = announce_count + 1
 		if normal_start == 0:
 			self.request.send(u_id)
 			normal_start = 1
@@ -208,6 +212,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		self.request.send(str(user))
 		self.request.close()
 		connection_rate = connection_rate + 1
+		announce_count = announce_count - 1
 
 	#Parses the data for a series of users and puts it in the database
 	def parse_data(self) :
@@ -264,6 +269,8 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global crawl_count
 		global response_rate
+		global response_count
+		response_count = response_count + 1
 		crawl_count = crawl_count+1
 		#print "Crawl results connection received"
 		buf = self.request.recv(1024)
@@ -277,13 +284,14 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 		#print "Followers received on server"
 		self.request.close()
 		response_rate = response_rate + 1
+		response_count = response_count - 1
 	
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 	pass
 
 
 
-if __name__ == '__main__':	
+if __name__ == '__main__': 
 
 	for arg in sys.argv: 
 		name = arg
@@ -329,10 +337,12 @@ if __name__ == '__main__':
 			for r in rate_history:
 				print r
 			print ('connections, responses this hour: ' +
-			       str(connection_rate) + ', ' + str(response_rate))
+					 str(connection_rate) + ', ' + str(response_rate))
 		elif 'lists' in line:
 			print 'crawl_list: ' + str(len(crawl_list))
 			print 'responses: ' + str(len(responses))
+			print 'announce_handlers: ' + str(announce_count)
+			print 'response_handlers: ' + str(response_count)
 		elif 'heap' in line:
 			print guppy.hpy().heap()
 		elif 'exit' in line:
