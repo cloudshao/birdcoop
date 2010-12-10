@@ -1,3 +1,4 @@
+import guppy
 import socket
 import SocketServer
 import string
@@ -141,7 +142,6 @@ conn.close()
 
 normal_start = 0
 lock = threading.RLock()
-pending_list = []
 responses = []
 
 # Variables to keep track of some stats
@@ -166,12 +166,10 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
 	def handle(self):
 		global normal_start 
-		global pending_list
 		global crawl_count
 		if normal_start == 0:
 			self.request.send(u_id)
 			normal_start = 1
-			pending_list.append(u_id)
 			return
 			
 		print '**Worker Connection Received**'
@@ -205,7 +203,6 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			user = 0
 		self.request.send(str(user))
 		self.request.close()
-		pending_list.append(user)
 		connection_rate = connection_rate + 1
 
 	#Parses the data for a series of users and puts it in the database
@@ -215,13 +212,9 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		# Each machine can only crawl 150 followers per hour, so track the number of users crawled
 		# Depending on the rate responses come in, we may need to lock so that we don't loop infinitely
 		while len(responses) > 0 :
-			global pending_list
 			user_data = responses.pop()
 			user_id = user_data['user']
 			
-			# Remove the returned user_id from pending list
-			pending_list = [v for v in pending_list if v == user_id]
-
 			# Response doesn't have followers if user was private
 			if 'followers' in user_data:
 				follower_data = user_data['followers']
@@ -333,6 +326,11 @@ if __name__ == '__main__':
 				print r
 			print ('connections, responses this hour: ' +
 			       str(connection_rate) + ', ' + str(response_rate))
+		elif 'lists' in line:
+			print 'crawl_list: ' + len(crawl_list)
+			print 'responses: ' + len(responses)
+		elif 'heap' in line:
+			print guppy.hpy().heap()
 		elif 'exit' in line:
 			conn.close()
 			sys.exit()
