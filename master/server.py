@@ -136,6 +136,7 @@ cursor = conn.cursor()
 init(cursor)
 crawl_list  = select_unfollowed_users(cursor)
 crawl_count = 0
+cursor.close()
 
 conn.close()
 
@@ -192,6 +193,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 				self.parse_data()
 				if len(crawl_list) == 0:
 					crawl_list = select_unfollowed_users(self.cursor);
+				self.cursor.close()
 				self.conn.close()
 				
 		finally:
