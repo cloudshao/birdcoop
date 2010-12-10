@@ -3,14 +3,19 @@ import socket
 import request
 import urllib2
 
-HOST = 'reala.ece.ubc.ca'
+HOST = 'air.local'
 ANNOUNCE_PORT = 5630
 REPLY_PORT = 5631
 
-for i in range(1):
+for i in range(30):
    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
    sock.connect((HOST, ANNOUNCE_PORT))
    user = sock.recv(1024)
+   sock.close()
+
+   # Hack, do properly
+   if int(user) == 0:
+      continue
    
    try:
 
