@@ -88,24 +88,24 @@ def select_unfollowed_users(cursor):
 # inserts one user into user table
 def insert_user(cursor, user_id, name, location, bio) :
 	try:
-		print"Try inserting " + str(user_id)
+		#print"Try inserting " + str(user_id)
 		t = (user_id, name, location, bio, int(time.time()))
 		cursor.execute('Insert into user_table(user_id, name, location, bio, currTime) values(?,?,?,?,?)', t)
 	except sqlite3.IntegrityError:
 		# the user was already in the table - so just continue
-		print"Duplicate user"
+		#print"Duplicate user"
 
 # inserts one user into user_crawled_table - used for for finding users which haven't been craweld
 def insert_user_crawled(cursor, user_id, wasCrawled) :
 	try:
-		print"Try inserting if " + str(user_id) + " was crawled"
+		#print"Try inserting if " + str(user_id) + " was crawled"
 		t = (user_id, wasCrawled, int(time.time()))
 		cursor.execute('Insert into user_crawled_table(user_id, crawled, currTime) values(?,?,?)', t)
 	except sqlite3.IntegrityError :
 		if wasCrawled  == 1:
 			# User is already in DB, update wasCrawled if it is now true - (ie this is the user we are crawling) - not in all cases because we don't want to set a 
 			# crawled user back to false
-			print"User already in db, but it's now crawled so setting it to crawled"
+			#print"User already in db, but it's now crawled so setting it to crawled"
 			cursor.execute('Insert or Replace into user_crawled_table(user_id, crawled, currTime) values(?,?,?)', t)
 
 
@@ -115,16 +115,16 @@ def insert_follower(cursor, user_id, follower_id) :
 		t = (user_id, follower_id, int(time.time()))
 		cursor.execute('Insert into follower_table(user_id, follower_id, currTime) values(?, ?,?)', t)
 	except sqlite3.IntegrityError :
-		print "Tried to insert follower relation we had already inserted"
+		#print "Tried to insert follower relation we had already inserted"
 
 # inserts a user-tweet relation into the db
 def insert_tweet(cursor, user_id, tweet_time, tweet) :
 	try:
 		t = (user_id, tweet_time, tweet, time.time())
 		cursor.execute('Insert into tweet_table(user_id, time, tweet, currTime) values (?, ?, ?, ?)', t)
-		print "tweet inserted for" + str(user_id)
+		#print "tweet inserted for" + str(user_id)
 	except sqlite3.IntegrityError:
-		print "tried to insert tweet we had already inserted"
+		#print "tried to insert tweet we had already inserted"
 
 
 u_id = ""
@@ -263,16 +263,16 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 		global crawl_count
 		global response_rate
 		crawl_count = crawl_count+1
-		print "Crawl results connection received"
+		#print "Crawl results connection received"
 		buf = self.request.recv(1024)
 		data = ''
 		while buf:
 			data = data + buf
 			buf = self.request.recv(1024)
-		print "loading json"
+		#print "loading json"
 		response  = json.loads(data)
 		responses.append(response)
-		print "Followers received on server"
+		#print "Followers received on server"
 		self.request.close()
 		response_rate = response_rate + 1
 	
