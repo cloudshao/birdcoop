@@ -93,7 +93,7 @@ def insert_user(cursor, user_id, name, location, bio) :
 		cursor.execute('Insert into user_table(user_id, name, location, bio, currTime) values(?,?,?,?,?)', t)
 	except sqlite3.IntegrityError:
 		# the user was already in the table - so just continue
-		#print"Duplicate user"
+		t=1
 
 # inserts one user into user_crawled_table - used for for finding users which haven't been craweld
 def insert_user_crawled(cursor, user_id, wasCrawled) :
@@ -115,6 +115,7 @@ def insert_follower(cursor, user_id, follower_id) :
 		t = (user_id, follower_id, int(time.time()))
 		cursor.execute('Insert into follower_table(user_id, follower_id, currTime) values(?, ?,?)', t)
 	except sqlite3.IntegrityError :
+		pass
 		#print "Tried to insert follower relation we had already inserted"
 
 # inserts a user-tweet relation into the db
@@ -124,6 +125,7 @@ def insert_tweet(cursor, user_id, tweet_time, tweet) :
 		cursor.execute('Insert into tweet_table(user_id, time, tweet, currTime) values (?, ?, ?, ?)', t)
 		#print "tweet inserted for" + str(user_id)
 	except sqlite3.IntegrityError:
+		pass
 		#print "tried to insert tweet we had already inserted"
 
 
