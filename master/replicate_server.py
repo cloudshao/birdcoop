@@ -3,29 +3,34 @@ import sqlite3
 import os
 import os.path
 import time
+import codecs
 
 def backup_db(oldTimestamp):
 	conn = sqlite3.connect("awesomeDB2")
 	cursor = conn.cursor()
 	
+	conn.text_factory = str
+		
 	# gotta get each table:
-	selectCommand = "select * from user_crawled_table where currTime > '"+oldTimestamp+"';"
-	cursor.execute(selectCommand)
+	selectCommand = "select * from user_crawled_table where currTime > '"+str(oldTimestamp)+"';"
+	print "first command: " + selectCommand
+	print "value of oldTimestamp: " + oldTimestamp
+	cursor.execute(selectCommand.encode('utf8'))
 	csv_writer = csv.writer(open("user_crawled_table.csv", "wt"))
 	csv_writer.writerows(cursor)
 	
-	selectCommand = "select * from tweet_table where currTime > '"+oldTimestamp+"';"
-	cursor.execute(selectCommand)
+	selectCommand = "select * from tweet_table where currTime > '"+str(oldTimestamp)+"';"
+	cursor.execute(selectCommand.encode('utf8'))
 	csv_writer = csv.writer(open("tweet_table.csv", "wt"))
 	csv_writer.writerows(cursor)
 	
-	selectCommand = "select * from user_table where currTime > '"+oldTimestamp+"';"
-	cursor.execute(selectCommand)
+	selectCommand = "select * from user_table where currTime > '"+str(oldTimestamp)+"';"
+	cursor.execute(selectCommand.encode('utf8'))
 	csv_writer = csv.writer(open("user_table.csv", "wt"))
 	csv_writer.writerows(cursor)
 	
-	selectCommand = "select * from follower_table where currTime > '"+oldTimestamp+"';"
-	cursor.execute(selectCommand)
+	selectCommand = "select * from follower_table where currTime > '"+str(oldTimestamp)+"';"
+	cursor.execute(selectCommand.encode('utf8'))
 	csv_writer = csv.writer(open("follower_table.csv", "wt"))
 	csv_writer.writerows(cursor)
 	
@@ -36,11 +41,11 @@ def backup_db(oldTimestamp):
 def replicate_db(nodeList):
 	for node in nodeList:
 		print "Transfering backup to replica server: "+node
-		cmd = "ssh -n -i group2@eece411 usf_ubc_gnutella1@"+node+" 'sudo chown -R usf_ubc_gnutella1:root ~/birdcoop'"
+		cmd = "ssh -o \"StrictHostKeyChecking no\" -o \"BatchMode yes\" -n -i group2@eece411 usf_ubc_gnutella1@"+node+" 'sudo chown -R usf_ubc_gnutella1:root ~/birdcoop'"
 		os.system(cmd);
 		cmd = "scp -i group2@eece411 user_crawled_table.csv tweet_table.csv user_table.csv follower_table.csv import_awesomebackup.py usf_ubc_gnutella1@"+node+":~/birdcoop/master"
 		os.system(cmd);
-		cmd = "ssh -n -i group2@eece411 usf_ubc_gnutella1@"+node+" 'python ~/birdcoop/master/import_awesomebackup.py'"
+		cmd = "ssh -o \"StrictHostKeyChecking no\" -o \"BatchMode yes\" -n -i group2@eece411 usf_ubc_gnutella1@"+node+" 'python ~/birdcoop/master/import_awesomebackup.py'"
 		os.system(cmd)
 	return
 	
@@ -55,8 +60,8 @@ def build_replist():
 	
 def getandset_timestamp(new_timestamp):
 	try:
-		ts_file = open('last_backup_time', 'r')
-		lastTimestamp = ts_file.read()
+		ts_file = codecs.open('last_backup_time', 'r', 'utf-8')
+		lastTimestamp = ts_file.read().splitlines()[0]
 		ts_file.close()
 		
 	except IOError:
