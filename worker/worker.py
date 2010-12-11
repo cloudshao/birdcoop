@@ -29,7 +29,7 @@ def main(*args):
       user = announce(host, ANNOUNCE_PORT)
 
       # Master returns 0 to signal 'do nothing'
-      if user != 0:
+      if user:
 
          try:
             # Ask twitter for the user's information
@@ -46,6 +46,8 @@ def main(*args):
          respond(response, host, REPLY_PORT)
 
       print 'total: ' + str(i) + ', just crawled: ' + str(user)
+
+   return 0
 
 
 def announce(host, port):
@@ -75,20 +77,18 @@ def crawl(user):
 
    response = {'user':user}
    try:
-
       # Get the followers and followees from twitter
       followers = json.loads(request.getFollowersJson(int(user)))
       followees = json.loads(request.getFolloweesJson(int(user)))
       response['followers'] = followers
       response['followees'] = followees
-
    except urllib2.HTTPError, e:
-
       # If the user is private, respond without followers/followees
       if e.code == 401:
          pass
       else:
          raise
+   return response
 
 
 def respond(response, host, port):
