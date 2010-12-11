@@ -7,6 +7,7 @@ import time
 import sqlite3
 import sys
 import simplejson as json
+import gc
 
 def init(cursor):
 
@@ -93,7 +94,7 @@ def insert_user(cursor, user_id, name, location, bio) :
 		cursor.execute('Insert into user_table(user_id, name, location, bio, currTime) values(?,?,?,?,?)', t)
 	except sqlite3.IntegrityError:
 		# the user was already in the table - so just continue
-		t=1
+		pass
 
 # inserts one user into user_crawled_table - used for for finding users which haven't been craweld
 def insert_user_crawled(cursor, user_id, wasCrawled) :
@@ -103,6 +104,7 @@ def insert_user_crawled(cursor, user_id, wasCrawled) :
 		cursor.execute('Insert into user_crawled_table(user_id, crawled, currTime) values(?,?,?)', t)
 	except sqlite3.IntegrityError :
 		if wasCrawled  == 1:
+			i  =1
 			# User is already in DB, update wasCrawled if it is now true - (ie this is the user we are crawling) - not in all cases because we don't want to set a 
 			# crawled user back to false
 			#print"User already in db, but it's now crawled so setting it to crawled"
@@ -132,13 +134,17 @@ def insert_tweet(cursor, user_id, tweet_time, tweet) :
 u_id = ""
 
 # initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
-conn = sqlite3.connect("awesomeDB2")
-cursor = conn.cursor() 
+conn = sqlite3.connect("awesomeDB")
+cursor = conn.cursor()
+#cursor.execute("pragma synchronous = 1")
+cursor.execute('BEGIN') 
 #drop_tables(cursor)
 init(cursor)
 crawl_list  = select_unfollowed_users(cursor)
 crawl_count = 0
+cursor.execute('END')
 cursor.close()
+conn.commit()
 
 conn.close()
 
@@ -191,11 +197,16 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			# add the client from the request to our dictionary of cliends
 			clients[self.request.getpeername()[0]] = 1;
 		
-			if len(crawl_list) == 0 or crawl_count > 500:
+			if len(crawl_list) == 0 or crawl_count > 50:
 				#put data in database
 				#populate our crawl list
-				self.conn = sqlite3.connect("awesomeDB2")
+				self.conn = sqlite3.connect("awesomeDB")
+                                self.conn.isolation_level = None
 				self.cursor = self.conn.cursor()
+				#cursor.execute("pragma synchronous = 1")
+				self.conn.commit()
+				self.cursor.execute('BEGIN') 
+
 				self.parse_data()
 				if len(crawl_list) == 0:
 					crawl_list = select_unfollowed_users(self.cursor);
@@ -217,6 +228,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 	#Parses the data for a series of users and puts it in the database
 	def parse_data(self) :
 		global crawl_count
+		#self.cursor.execute('BEGIN TRANSACTION') 
 		print "About to parse data and populate the database"
 		# Each machine can only crawl 150 followers per hour, so track the number of users crawled
 		# Depending on the rate responses come in, we may need to lock so that we don't loop infinitely
@@ -228,6 +240,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			if 'followers' in user_data:
 				follower_data = user_data['followers']
 				for user in follower_data :
+					pass
 					# insert the users data into our user_table
 					insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
 					# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
@@ -244,13 +257,15 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			if 'followees' in user_data:
 				followee_data = user_data['followees']
 				for user in followee_data:
-					# insert the users data into our user_table
+					#insert the users data into our user_table
 					insert_user(self.cursor, user['id'], user['name'], user['location'], user['description'])
 					# AFAIK this user has not been crawled yet - if so insert_user_crawled will handle it
 					insert_user_crawled(self.cursor, user['id'], 0)
 					# this user follows user_name - insert him/her in follower_table
 					insert_follower(self.cursor, user['id'], user_id)
 					try: 
+						i = 1
+						pass
 						insert_tweet(self.cursor, user['id'], user['status']['created_at'], user['status']['text']) #Try inserting this users status - if he has one it will insert
 					except KeyError:
 						# User does not have a status
@@ -261,6 +276,8 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
 		# write everything we have added to disk
 		crawl_count = 0
+		print "about to commit"
+		self.cursor.execute('END') 
 		self.conn.commit()
 		print "Data comitted to DB"
 
@@ -293,6 +310,7 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
 if __name__ == '__main__': 
 
+	gc.set_debug(gc.DEBUG_LEAK)
 	for arg in sys.argv: 
 		name = arg
 		if name != "server.py" :  #Is the arg actaully a username, or this file's name? - Can't find way to get filename from inside code - hopefully we don't rename
@@ -348,8 +366,12 @@ if __name__ == '__main__':
 		elif 'exit' in line:
 			conn.close()
 			sys.exit()
+		elif 'garbage' in line:
+			x = gc.collect()
+			print x
 		elif not line.strip():
 			print 'type "exit" to terminate'
+
 		else:
 			print 'Did not understand your command'
 
