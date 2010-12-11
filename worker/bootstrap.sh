@@ -6,8 +6,7 @@
 
 # Update the code by pulling the repo
 cd /home/usf_ubc_gnutella1/birdcoop
-git reset --hard HEAD
-git pull
+git fetch origin master
 
 # Since this node is a worker, execute the worker script
 cd /home/usf_ubc_gnutella1/birdcoop/worker
