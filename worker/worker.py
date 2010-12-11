@@ -31,8 +31,16 @@ def main(*args):
       # Master returns 0 to signal 'do nothing'
       if user != 0:
 
-         # Ask twitter for the user's information
-         response = crawl(user)
+         try:
+            # Ask twitter for the user's information
+            response = crawl(user)
+         except urllib2.HTTPError, e:
+            # Twitter responds with 'bad request' when rate limit is reached
+            if e.code == 400:
+               print '400 Error, reached rate limit. Halting.'
+               break
+            else:
+               raise
 
          # Return the user's information to the master
          respond(response, host, REPLY_PORT)
