@@ -22,8 +22,9 @@ def main(*args):
       print 'Usage: python test_worker.py <master>'
       return 1
 
-   # Repeat this process 150 times
-   for i in range(150):
+   # Keep processing until rate limit is reached
+   rate_limit_reached = False
+   while not rate_limit_reached:
 
       # Get the user to crawl from the master
       user = announce(host, ANNOUNCE_PORT)
@@ -37,16 +38,17 @@ def main(*args):
          except urllib2.HTTPError, e:
             # Twitter responds with 'bad request' when rate limit is reached
             if e.code == 400:
-               print '400 Error, reached rate limit. Halting.'
-               break
+               print 'Got status code 400: Rate limit reached.'
+               rate_limit_reached = True
             else:
                raise
 
          # Return the user's information to the master
          respond(response, host, REPLY_PORT)
 
-      print 'total: ' + str(i) + ', just crawled: ' + str(user)
+      print 'just crawled: '+str(user)
 
+   print 'Halting.'
    return 0
 
 
@@ -78,10 +80,8 @@ def crawl(user):
    response = {'user':user}
    try:
       # Get the followers and followees from twitter
-      followers = request.get_followers(int(user))
-      followees = request.get_followees(int(user))
-      response['followers'] = followers
-      response['followees'] = followees
+      response['followers'] = request.get_followers(int(user))
+      response['followees'] = request.get_followees(int(user))
    except urllib2.HTTPError, e:
       # If the user is private, respond without followers/followees
       if e.code == 401:
