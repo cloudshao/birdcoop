@@ -33,18 +33,21 @@ def main(*args):
       if user:
 
          try:
+
             # Ask twitter for the user's information
             response = crawl(user)
+
+            # Return the user's information to the master
+            respond(response, host, REPLY_PORT)
+
          except urllib2.HTTPError, e:
+
             # Twitter responds with 'bad request' when rate limit is reached
             if e.code == 400:
                print 'Got status code 400: Rate limit reached.'
                rate_limit_reached = True
             else:
                raise
-
-         # Return the user's information to the master
-         respond(response, host, REPLY_PORT)
 
       print 'just crawled: '+str(user)
 
