@@ -78,8 +78,8 @@ def crawl(user):
    response = {'user':user}
    try:
       # Get the followers and followees from twitter
-      followers = json.loads(request.getFollowersJson(int(user)))
-      followees = json.loads(request.getFolloweesJson(int(user)))
+      followers = request.get_followers(int(user))
+      followees = request.get_followees(int(user))
       response['followers'] = followers
       response['followees'] = followees
    except urllib2.HTTPError, e:
