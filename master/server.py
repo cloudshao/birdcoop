@@ -101,12 +101,9 @@ u_id = ""
 # initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
 conn = sqlite3.connect("awesomeDB")
 cursor = conn.cursor()
-#cursor.execute("pragma synchronous = 1")
-cursor.execute('BEGIN') 
 init(cursor)
 crawl_list  = select_unfollowed_users(cursor)
 crawl_count = 0
-cursor.execute('END')
 cursor.close()
 conn.commit()
 
@@ -167,12 +164,8 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 				#put data in database
 				#populate our crawl list
 				self.conn = sqlite3.connect("awesomeDB")
-                                self.conn.isolation_level = None
 				self.cursor = self.conn.cursor()
-				#cursor.execute("pragma synchronous = 1")
 				self.conn.commit()
-				self.cursor.execute('BEGIN') 
-
 				self.parse_data()
 				if len(crawl_list) == 0:
 					crawl_list = select_unfollowed_users(self.cursor);
@@ -194,7 +187,6 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 	#Parses the data for a series of users and puts it in the database
 	def parse_data(self) :
 		global crawl_count
-		#self.cursor.execute('BEGIN TRANSACTION') 
 		print "About to parse data and populate the database"
 		# Each machine can only crawl 150 followers per hour, so track the number of users crawled
 		# Depending on the rate responses come in, we may need to lock so that we don't loop infinitely
@@ -243,7 +235,6 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		# write everything we have added to disk
 		crawl_count = 0
 		print "about to commit"
-		self.cursor.execute('END') 
 		self.conn.commit()
 		print "Data comitted to DB"
 
@@ -382,7 +373,7 @@ if __name__ == '__main__':
 		is_master = 1 # if we're not started in "backup-mode" then we must be master
 	
 	# okay, we need to check if we are starting up from a crash
-	recoveryFile = open('recoverycheck', 'rw')
+	recoveryFile = open('recoverycheck', 'r+b')
 	if (recoveryFile.read() == '1'): # uh oh, that means we did not close properly last time
 		check_and_regain_master()
 		
@@ -410,14 +401,16 @@ if __name__ == '__main__':
 	recv_data_thread = threading.Thread(target = recv_data_server.serve_forever)
 
 	print "Server threads created"
-	get_user_thread.setDaemon(True)
-	recv_data_thread.setDaemon(True)
+	get_user_thread.daemon = True
+	recv_data_thread.daemon = True
 	get_user_thread.start()
 	recv_data_thread.start()
 	print "Server's started and waiting for input"
 
 	# Start a thread to keep track of hourly crawl rate
-	threading.Thread(target=rate_tracker_thread).start()
+	rate_track_thread = threading.Thread(target=rate_tracker_thread)
+	rate_track_thread.daemon = True
+	rate_track_thread.start()
 
 	while True:
 		line = sys.stdin.readline()
