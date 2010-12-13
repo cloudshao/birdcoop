@@ -1,4 +1,5 @@
 import guppy
+import os
 import socket
 import SocketServer
 import string
@@ -253,8 +254,9 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 			data = data + buf
 			buf = self.request.recv(1024)
 		#print "loading json"
-		response  = json.loads(data)
-		responses.append(response)
+		response = json.loads(data)
+		if response:
+			responses.append(response)
 		#print "Followers received on server"
 		self.request.close()
 		response_rate = response_rate + 1
