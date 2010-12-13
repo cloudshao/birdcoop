@@ -45,41 +45,6 @@ def init(cursor):
 		# tweet table has not yet been created, create it
 		cursor.execute("create table tweet_table (user_id integer, time CHAR(20), tweet CHAR(140), currTime INTEGER, PRIMARY KEY(user_id, time))")
 
-def drop_tables(cursor) :
-	
-	#check to see if user table was created
-	cursor.execute("select name from sqlite_master Where type='table' and Name= 'user_table'")
-
-	if cursor.fetchone() != None :
-		# user table has been created, drop it
-		print"Dropping user_table"
-		cursor.execute("Drop table 'user_table'")
-
-	#check to see if user_crawled_table was created
-	cursor.execute("select name from sqlite_master Where type='table' and Name= 'user_crawled_table'")
-
-	if cursor.fetchone() != None :
-		# user crawled table has been created, drop it
-		print"Dropping user_crawled_table"
-		cursor.execute("Drop table 'user_crawled_table'")
-	
-	# check to see if followers table has been created
-	cursor.execute("select name from sqlite_master Where type='table' and Name= 'follower_table'")
-
-	if cursor.fetchone() != None :
-		# followers table has been created, drop it
-		print"Dropping followers_table"
-		cursor.execute("Drop table 'follower_table'")
-
-	
-	# check to see if tweet_table has been created
-	cursor.execute("select name from sqlite_master Where TYPE='table' and NAME = 'tweet_table'")
-
-	if cursor.fetchone() != None :
-		# tweet table has been created, drop it
-		print"Dropping tweet table"
-		cursor.execute("Drop table 'tweet_table'")
-
 # finds a users which are not crawlwed and returns them
 def select_unfollowed_users(cursor):
 	cursor.execute('Select user_id from user_crawled_table where crawled == 0')
@@ -138,7 +103,6 @@ conn = sqlite3.connect("awesomeDB")
 cursor = conn.cursor()
 #cursor.execute("pragma synchronous = 1")
 cursor.execute('BEGIN') 
-#drop_tables(cursor)
 init(cursor)
 crawl_list  = select_unfollowed_users(cursor)
 crawl_count = 0
