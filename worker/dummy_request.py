@@ -31,7 +31,7 @@ def __get_user_list(user_id):
       temp_u['description'] = 'My name is john doe hello everyone'
       users.append(temp_u)
 
-   return __clean(users)
+   return __clean(users), False
 
 def __clean(user_list):
    '''
