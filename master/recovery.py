@@ -81,6 +81,7 @@ def stop_master_request(master_status):
 	print 'Received a request to stop accepting workers.'
 	master_status = False
 	print 'Node is no longer master node.'
+	return master_status
 
 
 def handle_master_request(master_status):
@@ -99,7 +100,7 @@ def handle_master_request(master_status):
 	# TODO: start up all server-related stuff
 	print 'Alright, looks like no higher priority nodes are alive. Time for us become master!'
 	master_status = False
-	return 1
+	return 1, master_status
 	
 
 def stop_current_master(currentMaster):
@@ -164,6 +165,7 @@ def regain_master_status(master_status):
 	# TODO: start up all all master server threads
 	print 'Setting our status to "master"'
 	master_status = True
+	return master_status
 
 
 def check_and_regain_master(master_status, backup_status):
@@ -174,17 +176,17 @@ def check_and_regain_master(master_status, backup_status):
 	
 	if not backup_status:
 		print 'We are primary master (usually reala) - so we need to regain master status from any node.'
-		regain_master_status(master_status)
+		master_status = regain_master_status(master_status)
 	else:
 		print 'We are a backup, so lets see if we need to become master.'
 		alive_parent_node = find_alive_nodes(myhostname)
 		if (alive_parent_node == 0):
 			# no parent nodes alive - we need to be master
 			print 'There are no parent nodes that are alive. We need to become master.'
-			regain_master_status(master_status)
+			master_status = regain_master_status(master_status)
 		else:
 			# there is a parent node that's master. lets just get a database
 			print 'There is a parent node alive. No need to become master.'
 			get_fresh_database(find_alive_nodes(' '))
-
-			
+	return master_status
+	

@@ -65,7 +65,7 @@ def main(*args):
 	recoveryFile = open('recoverycheck', 'rb+')
 	status = recoveryFile.read()
 	if ('1' in status): # uh oh, that means we did not close properly last time
-		recovery.check_and_regain_master(is_master, is_backup)
+		is_master = recovery.check_and_regain_master(is_master, is_backup)
 		
 	# lets set recoveryfile to '1' which means we're currently active
 	recoveryFile.seek(0, 0)
@@ -173,15 +173,16 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			print 'We have a received a request from a worker, but we are not a master node.'
 			self.request.send('-1')
 			
-		clients[self.request.getpeername()[0]] = 1;
-		
-		try:
-			user = to_crawl.get(block=True, timeout=5)
-			print 'sending ' + str(user)
-			self.request.send(str(user))
-		except Queue.Empty:
-			print 'sending ' + str(0)
-			self.request.send(str(0))
+		else:
+			clients[self.request.getpeername()[0]] = 1;
+			
+			try:
+				user = to_crawl.get(block=True, timeout=5)
+				print 'sending ' + str(user)
+				self.request.send(str(user))
+			except Queue.Empty:
+				print 'sending ' + str(0)
+				self.request.send(str(0))
 
 		self.request.close()
 		connection_rate = connection_rate + 1
@@ -258,8 +259,8 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 			response = json.loads(data)
 			if response: responses.put(response)
 			self.request.close()
-			response_rate = response_rate + 1
-			response_count = response_count - 1
+		response_rate = response_rate + 1
+		response_count = response_count - 1
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 	pass
@@ -272,12 +273,12 @@ class ControlMessageHandler(SocketServer.BaseRequestHandler):
 		msg = self.request.recv(1024)
 		print 'Received a control message: '+msg
 		if 'become_master' in msg:
-			status = recovery.handle_master_request(is_master)
+			status,is_master = recovery.handle_master_request(is_master)
 			self.request.send(str(status))
 		elif 'is_master' in msg:
 			self.request.send(str(is_master));
 		elif 'stop_master' in msg:
-			stop_master_request(is_master)
+			is_master = stop_master_request(is_master)
 
 
 if __name__ == '__main__': 
