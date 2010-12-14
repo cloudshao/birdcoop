@@ -197,6 +197,8 @@ def parse_data_thread():
 	database.create_tables()
 	database.save()
 
+	num_uncommitted = 0
+
 	while should_continue:
 
 		print 'Entered parse_data loop'
@@ -207,6 +209,7 @@ def parse_data_thread():
 		except Queue.Empty: pass
 
 		if user_data:
+			num_uncommitted += 1
 			user_id = user_data['user']
 			
 			if 'followers' in user_data:
@@ -225,14 +228,19 @@ def parse_data_thread():
 
 			database.set_crawled(user_id)
 
-			if to_crawl.qsize() == 0:
+			if to_crawl.qsize() == 0 or num_uncommitted > 500:
+
 				print 'about to commit'
 				database.save()
-				uncrawled_users = database.get_unfollowed_users()
-				for u in uncrawled_users:
-					print 'putting %s to to_crawl' % (u[0],)
-					to_crawl.put(u[0])
-			print 'Data comitted to DB'
+				print 'Data comitted to DB'
+
+				num_uncommitted = 0
+
+				if to_crawl.qsize() == 0:
+					uncrawled_users = database.get_unfollowed_users()
+					for u in uncrawled_users:
+						print 'putting %s to to_crawl' % (u[0],)
+						to_crawl.put(u[0])
 
 	database.save()
 	database.close()
