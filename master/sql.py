@@ -36,7 +36,7 @@ class AwesomeDatabase():
 
       cursor.close()
 
-   def select_unfollowed_users(self):
+   def get_unfollowed_users(self):
       ''' Gets a list of users that have not been crawled '''
       cursor = self.conn.cursor()
       cursor.execute('SELECT user_id FROM user_table WHERE crawled=0')
