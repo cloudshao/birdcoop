@@ -255,7 +255,8 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 			data = ''
 			while buf:
 				data = data + buf
-				buf = self.request.recv(1024)
+				buf = str(self.request.recv(1024))
+			#print 'JSON response: '+data
 			response = json.loads(data)
 			if response: responses.put(response)
 			self.request.close()

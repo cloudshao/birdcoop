@@ -12,9 +12,9 @@ def get_followers(user_id):
    Keyword arguments:
    user_id -- the id of the user
    """
-   return __get_user_list(user_id, FOLLOWERS_URL)
+   return __get_user_list(user_id, FOLLOWERS_URL, 0) # set count to 0
 
-def get_followees(user_id):
+def get_followees(user_id, previous_count):
    """
    Returns all the followees (friends) of a user
    Raises HTTPError if something went wrong during the HTTP request
@@ -22,19 +22,21 @@ def get_followees(user_id):
    Keyword arguments:
    user_id -- the id of the user
    """
-   return __get_user_list(user_id, FOLLOWEES_URL)
+   return __get_user_list(user_id, FOLLOWEES_URL, previous_count)
 
-def __get_user_list(user_id, url):
+def __get_user_list(user_id, url, previous_count):
    cursor = -1
    users = []
-   while cursor:
+   count = previous_count
+   while cursor and count < 150:
       response = urllib2.urlopen(url +
                                  'user_id=' + str(user_id) +
                                  '&cursor=' + str(cursor))
       object = json.loads(response.read())
       users.extend(object['users'])
       cursor = object['next_cursor']
-   return __clean(users)
+      count += 1
+   return __clean(users), count
 
 def __clean(user_list):
    '''

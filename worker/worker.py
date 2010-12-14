@@ -106,7 +106,7 @@ def announce(host, port):
 	port -- the port of the master
 	"""
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.settimeout(10)
+	sock.settimeout(30)
 	sock.connect((host, port))
 	user = int(sock.recv(1024))
 	sock.close()
@@ -126,8 +126,8 @@ def crawl(user):
 	response = {'user':user}
 	try:
 		# Get the followers and followees from twitter
-		response['followers'] = request.get_followers(int(user))
-		response['followees'] = request.get_followees(int(user))
+		response['followers'],api_count = request.get_followers(int(user))
+		response['followees'],api_count = request.get_followees(int(user),api_count)
 	except urllib2.HTTPError, e:
 		# If the user is private, respond without followers/followees
 		if e.code == 401:
@@ -147,8 +147,9 @@ def respond(response, host, port):
 	port -- the master's response port
 	"""
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.settimeout(10)
+	#sock.settimeout(30)
 	sock.connect((host, port))
+	#print 'JSON dump: '+str(json.dumps(response))
 	sock.send(json.dumps(response))
 	sock.close()
 
@@ -194,7 +195,7 @@ def find_alive_master_nodes():
 				sock.send('is_master')
 				master = sock.recv(1024)
 				sock.close()
-				if (master == '1'):
+				if master:
 					print 'Node is a master!'
 					alivenode = node # this means a higher priority node is master, lets tell worker thread
 					break
