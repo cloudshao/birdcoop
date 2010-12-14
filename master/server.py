@@ -213,21 +213,15 @@ def parse_data_thread():
 				follower_data = user_data['followers']
 				for user in follower_data :
 					database.insert_user(user['id'], user['name'],
-						user['location'], user['description'], 0)
+						user['location'], 0)
 					database.insert_follower(user_id, user['id'])
-					try: database.insert_tweet(user['id'],
-							user['status']['created_at'], user['status']['text'])
-					except KeyError: pass
 
 			if 'followees' in user_data:
 				followee_data = user_data['followees']
 				for user in followee_data:
 					database.insert_user(user['id'], user['name'],
-						user['location'], user['description'], 0)
+						user['location'], 0)
 					database.insert_follower(user['id'], user_id)
-					try: database.insert_tweet(user['id'],
-							user['status']['created_at'], user['status']['text'])
-					except KeyError: pass
 
 			database.set_crawled(user_id)
 
@@ -256,7 +250,6 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 			while buf:
 				data = data + buf
 				buf = str(self.request.recv(1024))
-			#print 'JSON response: '+data
 			response = json.loads(data)
 			if response: responses.put(response)
 			self.request.close()

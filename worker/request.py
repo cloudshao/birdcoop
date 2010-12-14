@@ -37,7 +37,8 @@ def __get_user_list(user_id, url):
          users.extend(object['users'])
          cursor = object['next_cursor']
    except urllib2.HTTPError, e:
-      if e.code == 400: 
+      print e
+      if e.code == 400:
          limit_reached = True
          pass
       else: raise
@@ -54,8 +55,6 @@ def __clean(user_list):
       if 'name' in user: temp['name'] = user['name']
       if 'screen_name' in user: temp['screen_name'] = user['screen_name']
       if 'location' in user: temp['location'] = user['location']
-      if 'description' in user: temp['description'] = user['description']
       if 'protected' in user: temp['protected'] = user['protected']
-      if 'status' in user: temp['status'] = user['status'].copy()
       temp_list.append(temp)
    return temp_list

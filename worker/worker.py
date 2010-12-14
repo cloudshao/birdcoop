@@ -112,6 +112,7 @@ def crawl(user):
 	"""
 	global node_api_count
 	
+	limit_reached = False
 	response = {'user':user}
 	try:
 		# Get the followers and followees from twitter
