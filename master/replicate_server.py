@@ -6,7 +6,7 @@ import time
 import codecs
 
 def backup_db(oldTimestamp):
-	conn = sqlite3.connect("awesomeDB2")
+	conn = sqlite3.connect("awesomeDB")
 	cursor = conn.cursor()
 	
 	conn.text_factory = str
@@ -43,7 +43,7 @@ def replicate_db(nodeList):
 		print "Transfering backup to replica server: "+node
 		cmd = "ssh -o \"StrictHostKeyChecking no\" -o \"BatchMode yes\" -n -i group2@eece411 usf_ubc_gnutella1@"+node+" 'sudo chown -R usf_ubc_gnutella1:root ~/birdcoop'"
 		os.system(cmd);
-		cmd = "scp -i group2@eece411 user_crawled_table.csv tweet_table.csv user_table.csv follower_table.csv import_awesomebackup.py usf_ubc_gnutella1@"+node+":~/birdcoop/master"
+		cmd = "scp -i group2@eece411 last_backup_time user_crawled_table.csv tweet_table.csv user_table.csv follower_table.csv import_awesomebackup.py usf_ubc_gnutella1@"+node+":~/birdcoop/master"
 		os.system(cmd);
 		cmd = "ssh -o \"StrictHostKeyChecking no\" -o \"BatchMode yes\" -n -i group2@eece411 usf_ubc_gnutella1@"+node+" 'python ~/birdcoop/master/import_awesomebackup.py'"
 		os.system(cmd)

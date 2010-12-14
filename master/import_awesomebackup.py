@@ -6,7 +6,7 @@ import os
 # insert into user_table(user_id, name, location, bio) values(1, 'name', 'loc', 'bio')
 
 def import_db():
-	conn = sqlite3.connect("/home/usf_ubc_gnutella1/birdcoop/master/awesomeDB2")
+	conn = sqlite3.connect("/home/usf_ubc_gnutella1/birdcoop/master/awesomeDB")
 	c = conn.cursor()
 	#c.execute("create table user_table (user_id integer PRIMARY KEY, name char(20), location char(30), bio char(160))")
 

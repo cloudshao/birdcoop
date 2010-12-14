@@ -48,18 +48,28 @@ def main(*args):
 	print 'initial_d ' + str(initial_d)
 	print 'to_crawl ' + str(to_crawl.qsize())
 
-	'''if (is_backup == 0):
-		is_master = 1 # if we're not started in "backup-mode" then we must be master
+	if not is_backup:
+		print 'We are not in backup node, so lets become master.'
+		is_master = True # if we're not started in "backup-mode" then we must be master
+	else:
+		print 'We are a backup node. We cannot accept requests for workers.'
 	
 	# okay, we need to check if we are starting up from a crash
-	recoveryFile = open('recoverycheck', 'r+b')
-	if (recoveryFile.read() == '1'): # uh oh, that means we did not close properly last time
-		check_and_regain_master()
+	if (os.path.isfile('recoverycheck') == 0):
+		newfile = open('recoverycheck', 'w')
+		newfile.write('0')
+		newfile.close()
+		
+	recoveryFile = open('recoverycheck', 'rb+')
+	status = recoveryFile.read()
+	if ('1' in status): # uh oh, that means we did not close properly last time
+		recovery.check_and_regain_master(is_master, is_backup)
 		
 	# lets set recoveryfile to '1' which means we're currently active
-	recoveryFile.seek(0, 0);
+	recoveryFile.seek(0, 0)
 	recoveryFile.write('1')
-	recoveryFile.close()'''
+	recoveryFile.close()
+
 	
 	user_server_tupple = socket.gethostname(), 5630
 	get_user_server  = ThreadedTCPServer(user_server_tupple, GetPersonToCrawlHandler)
@@ -69,12 +79,20 @@ def main(*args):
 	recv_data_server = ThreadedTCPServer(recv_data_server_tupple, ReceiveDataHandler)
 	print "Receive server created at port 5631"
 
+	control_server_tupple = socket.gethostname(), 5632
+	control_server = ThreadedTCPServer(control_server_tupple, ControlMessageHandler)
+	print "Control server created at port 5632"
+	
+	
 	get_user_thread = threading.Thread(target = get_user_server.serve_forever)
 	recv_data_thread = threading.Thread(target = recv_data_server.serve_forever)
+	control_thread = threading.Thread(target = control_server.serve_forever)
 	get_user_thread.daemon = True
 	recv_data_thread.daemon = True
+	control_thread.daemon = True
 	get_user_thread.start()
 	recv_data_thread.start()
+	control_thread.start()
 	print "Server threads created"
 
 	# Start a thread to keep track of hourly crawl rate
@@ -148,6 +166,10 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		global connection_rate
 
 		announce_count = announce_count + 1
+		
+		if not is_master:
+			print 'We have a received a request from a worker, but we are not a master node.'
+			self.request.send('-1')
 			
 		clients[self.request.getpeername()[0]] = 1;
 		
@@ -223,20 +245,37 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global response_rate
 		global response_count
-		response_count = response_count + 1
-		buf = self.request.recv(1024)
-		data = ''
-		while buf:
-			data = data + buf
+		
+		if is_master:
+			response_count = response_count + 1
 			buf = self.request.recv(1024)
-		response = json.loads(data)
-		if response: responses.put(response)
-		self.request.close()
-		response_rate = response_rate + 1
-		response_count = response_count - 1
+			data = ''
+			while buf:
+				data = data + buf
+				buf = self.request.recv(1024)
+			response = json.loads(data)
+			if response: responses.put(response)
+			self.request.close()
+			response_rate = response_rate + 1
+			response_count = response_count - 1
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 	pass
+
+	
+class ControlMessageHandler(SocketServer.BaseRequestHandler):
+	def handle(self):
+		global is_master
+		
+		msg = self.request.recv(1024)
+		print 'Received a control message: '+msg
+		if 'become_master' in msg:
+			status = handle_master_request(is_master)
+			self.request.send(str(status))
+		elif 'is_master' in msg:
+			self.request.send(str(is_master));
+		elif 'stop_master' in msg:
+			stop_master_request(is_master)
 
 	
 def find_alive_nodes(lastnode):
