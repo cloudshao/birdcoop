@@ -65,12 +65,14 @@ def find_alive_master_nodes(lastnode):
 				print 'Checking if node is master...'
 				sock.send('is_master')
 				master = sock.recv(1024)
+				print 'rcvd master: '+master
 				sock.close()
-				if "True" in master:
+				if 'True' in master:
 					print 'Node is a master!'
 					alivenode = node # this means a higher priority node is master, lets tell worker thread
 					break
-			except:
+			except Exception, e:
+				print e
 				print 'Node is not running a server!'
 
 	return alivenode
