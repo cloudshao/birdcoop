@@ -2,7 +2,6 @@ import sqlite3
 import sys
 import json
 import urllib2
-from django.utils.encoding import smart_str, smart_unicode
 
 def most_common(lst):
 	return max(set(lst), key=lst.count)
@@ -11,7 +10,7 @@ def insertCol(value, index):
    index.write('<td>')
    index.write(value)
    index.write('</td>')
-   
+
 def makePopNameTable(cursor, index):
 	#Add table to html
 	index.write('Most Common Name </br>')
@@ -78,25 +77,61 @@ def getBots(index):
 	bots = 0
 	celebrities = 0
 	totalUsers = 0
+	used = 0
+	toCrawl = 100
+	coolness = [[0 for col in range(3)] for row in range(toCrawl)]
 	cursor.execute('select follower_id from follower_table desc limit 5000')
 	for row in cursor:
 		cursor2.execute("select count(*) from follower_table where user_id='%s'" %row[0])
 		cursor3.execute("select count(*) from follower_table where follower_id='%s'" %row[0])
 		countUsers =  int(cursor2.fetchone()[0])
 		countFollowers = int(cursor3.fetchone()[0])
+		coolness.sort()
+#		for i in range(10):
+#		  if coolness[0][1] == row[0] or coolness[1][1] == row[0] or coolness[2][1] == row[0] or coolness[3][1] == row[0] or coolness[4][1] == row[0] or coolness[5][1] == row[0] or coolness[6][1] == row[0] or coolness[7][1] == row[0] or coolness[8][1] == row[0] or coolness[9][1] == row[0]:
+#			  break
+#		  if coolness[i][0] < countFollowers:
+#		    coolness[i][0] = countFollowers
+#		    coolness[i][1] = row[0]
+#		    break
+		for i in range(toCrawl):
+		  used = 0
+		  for y in range(toCrawl):
+		 	  if coolness[y][1] == row[0]:
+		 	    used=1
+		 	    break
+		  if coolness[i][0] < countFollowers and used == 0:
+		 	  coolness[i][0] = countFollowers
+		 	  coolness[i][1] = row[0]
 		if (countUsers+50 < countFollowers):
 			bots = bots+1
 		if (countUsers > countFollowers+50):
 			celebrities = celebrities+1
 		totalUsers = totalUsers+1
+
+	for i in range(toCrawl):
+	  coolness[i][2] = coolness[i][0]
+	  for y in range(toCrawl):
+	    sql2 = "select follower_id from follower_table where user_id = '%s' and follower_id = '%s'" % (coolness[i][1], coolness[y][1])
+	    #sql2 = "select follower_id from follower_table where user_id = 216393728 and follower_id = 219831583"
+	    cursor2.execute(sql2)
+	    sql3 = "select follower_id from follower_table where user_id = '%s' and follower_id = '%s'" % (coolness[y][1], coolness[i][1])
+	    #sql3 = "select follower_id from follower_table where user_id = 219831583 and follower_id = 216393728"
+	    cursor3.execute(sql3)
+	    #temp = cursor2.fetchone()
+	    #temp2 = cursor3.fetchone()
+	    if cursor2.fetchone() and cursor3.fetchone() is None: #and cursor3.fetchone() is False:
+	      coolness[i][2] = (coolness[y][0])/2 + coolness[i][2]
+	print coolness
+
 	index.write('Ratio of Bots and Celebrities <br/> Bots have many more following than followers <br/> Celebrities have many more followers than people followed <br/>')
 	index.write('<table border = 1>')
 	index.write('<tr><td>Bots</td><td>')
 	index.write(str(bots))
 	index.write('<tr><td>Celebrities</td><td>')
 	index.write(str(celebrities))
-	index.write('<tr><td>totalUsers</td><td>')
-	index.write(str(totalUsers))
+	index.write('<tr><td>Other Users</td><td>')
+	index.write(str(totalUsers-bots-celebrities))
 	index.write('</td></tr></table><br/>')
 	script = '<script type="text/javascript"> graph = new BAR_GRAPH("hBar"); graph.values = "' + str(bots) + ',' + str(celebrities) + ',' + str(totalUsers) + '"; graph.labels = "Bots, Celebrities, Total Users"; document.write(graph.create()); </script><br/><br/>'
 	
@@ -153,9 +188,9 @@ conn.text_factory = str
 cursor = conn.cursor()
 cursor2 = conn.cursor() 
 cursor3 = conn.cursor()
-getPopularName(index)
+#getPopularName(index)
 getBots(index)
-getCommonLocations(index)
+#getCommonLocations(index)
 cursor.close()
 cursor2.close()
 cursor3.close()
