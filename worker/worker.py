@@ -20,46 +20,24 @@ def main(*args):
 	# Get the hostname positional argument
 	try:
 		host = args[1]
-		oldHost = ''
 	except IndexError:
 		print 'Usage: python test_worker.py <master>'
 		return 1
 
 	# Keep processing until rate limit is reached
-	user_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	reply_socket =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	
-	try:
-		user_socket.connect((host, ANNOUNCE_PORT))
-		reply_socket.connect((host, REPLY_PORT))
-	except socket.error:
-		print "Server not running, Cannot proceed"
-		return 1
-		
 	rate_limit_reached = False
 	while not rate_limit_reached:
 		
 		print 'Current host: '+str(host)
-		try:		
+		try:
 			# Get the user to crawl from the master
 			print 'Getting user to crawl...'
-			user_socket.send("USER")
-			user = int(user_socket.recv(1024))
-			#user = announce(host, ANNOUNCE_PORT)	
+			user = announce(host, ANNOUNCE_PORT)	
 			print 'Got user '+str(user)
 		except:
 			user = -1
 			print 'Received exception. Looking for another host.'
 			host = find_alive_master_nodes()
-			
-			if (oldHost != host):
-				user_socket.close()
-				reply_socket.close()
-				user_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				reply_socket =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				user_socket.connect((host, ANNOUNCE_PORT))
-				reply_socket.connect((host, REPLY_PORT))
-				
 			while 1==1:
 				if (host == 0):
 					print 'Could not find any replicas that are master nodes. Lets request highest priority replica to become master.'
@@ -99,13 +77,7 @@ def main(*args):
 
 				try:
 					# Return the user's information to the master
-					print "Sending response to server"
-					json_string = json.dumps(response)
-					reply_socket.send(str(len(json_string)))
-					
-					reply_socket.recv(1024)
-					
-					reply_socket.send(json_string)
+					respond(response, host, REPLY_PORT)
 				except:
 					print 'There was a server timeout.'
 
@@ -121,9 +93,24 @@ def main(*args):
 		print 'just crawled: '+str(user)
 
 	print 'Halting.'
-	user_socket.close()
-	reply_socket.close()
 	return 0
+
+
+def announce(host, port):
+	"""
+	Connect to the master and receive a user id to crawl
+	Connect to the master and receive a user id to crawl
+
+	Keyword arguments:
+	host -- the hostname of the master to contact
+	port -- the port of the master
+	"""
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.settimeout(10)
+	sock.connect((host, port))
+	user = int(sock.recv(1024))
+	sock.close()
+	return user
 
 
 def crawl(user):
@@ -149,7 +136,22 @@ def crawl(user):
 			raise
 	return response
 
-	
+
+def respond(response, host, port):
+	"""
+	Sends a dictionary object to the master
+
+	Keyword arguments:
+	response -- the dict to send
+	host -- the hostname of the master
+	port -- the master's response port
+	"""
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.settimeout(10)
+	sock.connect((host, port))
+	sock.send(json.dumps(response))
+	sock.close()
+
 def find_alive_nodes():
 	backupNodesFile=open('../master/replicate_list', 'r')
 	backupNodes = backupNodesFile.read()
@@ -203,6 +205,7 @@ def find_alive_master_nodes():
 
 			
 	return alivenode
+	
 	
 if __name__ == '__main__':
 	sys.exit(main(*sys.argv))
