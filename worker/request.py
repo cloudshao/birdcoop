@@ -12,9 +12,9 @@ def get_followers(user_id):
    Keyword arguments:
    user_id -- the id of the user
    """
-   return __get_user_list(user_id, FOLLOWERS_URL, 0) # set count to 0
+   return __get_user_list(user_id, FOLLOWERS_URL)
 
-def get_followees(user_id, previous_count):
+def get_followees(user_id):
    """
    Returns all the followees (friends) of a user
    Raises HTTPError if something went wrong during the HTTP request
@@ -22,21 +22,26 @@ def get_followees(user_id, previous_count):
    Keyword arguments:
    user_id -- the id of the user
    """
-   return __get_user_list(user_id, FOLLOWEES_URL, previous_count)
+   return __get_user_list(user_id, FOLLOWEES_URL)
 
-def __get_user_list(user_id, url, previous_count):
+def __get_user_list(user_id, url):
    cursor = -1
    users = []
-   count = previous_count
-   while cursor and count < 150:
-      response = urllib2.urlopen(url +
+   limit_reached = False;
+   try:
+      while cursor:
+         response = urllib2.urlopen(url +
                                  'user_id=' + str(user_id) +
                                  '&cursor=' + str(cursor))
-      object = json.loads(response.read())
-      users.extend(object['users'])
-      cursor = object['next_cursor']
-      count += 1
-   return __clean(users), count
+         object = json.loads(response.read())
+         users.extend(object['users'])
+         cursor = object['next_cursor']
+   except urllib2.HTTPError, e:
+      if e.code == 400: 
+         limit_reached = True
+         pass
+      else: raise
+   return __clean(users),limit_reached
 
 def __clean(user_list):
    '''

@@ -1,5 +1,4 @@
 import request
-#import dummy_request as request # Uncomment this line to enable dummy twitter calls
 import simplejson as json
 import socket
 import sys
@@ -39,7 +38,7 @@ def main(*args):
 			user = -1
 			print 'Received exception. Looking for another host.'
 			host = find_alive_master_nodes()
-			while 1==1:
+			while True:
 				if (host == 0):
 					print 'Could not find any replicas that are master nodes. Lets request highest priority replica to become master.'
 					host = find_alive_nodes()
@@ -70,29 +69,17 @@ def main(*args):
 
 		# Master returns 0 to signal 'do nothing'
 		elif user > 0:
-
+			# Ask twitter for the user's information
+			response,limit_reached = crawl(user)
+			if (limit_reached):
+				rate_limit_reached = True
 			try:
-
-				# Ask twitter for the user's information
-				response = crawl(user)
-
-				try:
-					# Return the user's information to the master
-					respond(response, host, REPLY_PORT)
-				except:
-					print 'There was a server timeout.'
-
-			except urllib2.HTTPError, e:
-
-				# Twitter responds with 'bad request' when rate limit is reached
-				if e.code == 400:
-					print 'Got status code 400: Rate limit reached.'
-					rate_limit_reached = True
-				else:
-					raise
-
+				# Return the user's information to the master
+				respond(response, host, REPLY_PORT)
+			except:
+				print 'There was a server timeout.'
 		print 'just crawled: '+str(user)
-
+		
 	print 'Halting.'
 	return 0
 
@@ -123,19 +110,21 @@ def crawl(user):
 	Keyword arguments:
 	user -- the user to crawl
 	"""
-
+	global node_api_count
+	
 	response = {'user':user}
 	try:
 		# Get the followers and followees from twitter
-		response['followers'],api_count = request.get_followers(int(user))
-		response['followees'],api_count = request.get_followees(int(user),api_count)
+		response['followers'],limit_reached = request.get_followers(int(user))
+		if not limit_reached:
+			response['followees'],limit_reached = request.get_followees(int(user))
 	except urllib2.HTTPError, e:
 		# If the user is private, respond without followers/followees
 		if e.code == 401:
 			pass
 		else:
 			raise
-	return response
+	return response,limit_reached
 
 
 def respond(response, host, port):
@@ -162,18 +151,18 @@ def find_alive_nodes():
 
 	alivenode = 0
 	for node in nodelist:
-		if ( os.system('ping -q -c1 ' + node) == 0):
+		if ( os.system('ping -q -c1 ' + node + ' &> /dev/null') == 0):
 			# okay we found a node that is alive
 			# TODO: need to add method in server.py to check if node is serving requests
-			print 'We found a node that is alive.'
-			# gota make sure it's running out code
+			print 'Node '+str(node)+' is alive.'
+			# gota make sure it's running our code
 			try:
 				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				sock.connect((node,CONTROL_PORT))
 				alivenode = node # this means a higher priority node is master, lets tell worker thread
 				break
 			except:
-				print 'Node is not running our application.'
+				print  str(node)+' is not running a server!'
 			
 	return alivenode
 	
@@ -185,25 +174,25 @@ def find_alive_master_nodes():
 
 	alivenode = 0
 	for node in nodelist:
-		if ( os.system('ping -q -c1 ' + node) == 0):
+		if ( os.system('ping -q -c1 ' + node + ' &> /dev/null') == 0):
 			# okay we found a node that is alive
 			# TODO: need to add method in server.py to check if node is serving requests
-			print 'We found a node that is alive.'
+			print 'Node '+str(node)+' is alive.'
 			try:
 				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				sock.connect((node,CONTROL_PORT))
-				print 'Checking if node is master...'
+				print 'Checking if '+str(node)+' is master...'
 				sock.send('is_master')
 				master = sock.recv(1024)
 				sock.close()
 				if master:
-					print 'Node is a master!'
+					print  str(node)+' is a master!'
 					alivenode = node # this means a higher priority node is master, lets tell worker thread
 					break
 				else:
-					print 'Node is NOT a master.'
+					print  str(node)+' is NOT a master.'
 			except:
-				print 'Node is not running a server!'
+				print  str(node)+' is not running a server!'
 
 			
 	return alivenode
