@@ -11,6 +11,7 @@ import sqlite3
 import sys
 import simplejson as json
 import gc
+import recovery
 
 # initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
 
