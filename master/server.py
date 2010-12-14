@@ -270,7 +270,7 @@ class ControlMessageHandler(SocketServer.BaseRequestHandler):
 		msg = self.request.recv(1024)
 		print 'Received a control message: '+msg
 		if 'become_master' in msg:
-			status = handle_master_request(is_master)
+			status = recovery.handle_master_request(is_master)
 			self.request.send(str(status))
 		elif 'is_master' in msg:
 			self.request.send(str(is_master));
