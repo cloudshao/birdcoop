@@ -1,4 +1,5 @@
 import request
+#import dummy_request as request # Uncomment this line to enable dummy twitter calls
 import simplejson as json
 import socket
 import sys
