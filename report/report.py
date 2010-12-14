@@ -2,6 +2,7 @@ import sqlite3
 import sys
 import json
 import urllib2
+import operator
 
 def most_common(lst):
 	return max(set(lst), key=lst.count)
@@ -12,7 +13,7 @@ def insertCol(value, index):
    index.write('</td>')
 
 def makePopNameTable(cursor, index):
-	#Add table to html
+	#Makes the common name table
 	index.write('Most Common Name </br>')
 	index.write('<table border = 1>')
 	insertCol('Name', index)
@@ -32,7 +33,7 @@ def makePopNameTable(cursor, index):
 		freq.append(str(row[1]))
 		index.write('</td></tr>')		
 	index.write('</table><br/>')
-	
+	#Creates the bar graph with the common name table
 	script = '<script type="text/javascript"> graph = new BAR_GRAPH("hBar"); graph.values = "' + freq[0] + ',' + freq[1] + ',' + freq[2] + ',' + freq[3] + ',' + freq[4] + ',' + freq[5] + ',' + freq[6] + ',' + freq[7] + ',' + freq[8] + ',' + freq[9] + '"; graph.labels = "' + names[0] + ',' + names[1] + ',' + names[2] + ',' + names[3] + ',' + names[4] + ',' + names[5] + ',' + names[6] + ',' + names[7] + ',' + names[8] + ',' + names[9] + '"; document.write(graph.create()); </script><br/><br/>'
 	index.write(script)
 
@@ -45,10 +46,10 @@ def getPopularName(index):
 	firstTwo = []
 	last = []
 	count = 0
-	cursor.execute('select name from user_table desc limit 20000')
+	cursor.execute('select name from user_table desc limit 20000') #Only pick the first 20,000 returned from the db so the program doesn't crash
 	for row in cursor:
 		name = row[0].rsplit(' ')
-		if (name[0] != 'The'):
+		if (name[0] != 'The'): #The is not a valid first name
 				firstOne.append(name[0])
 	commonFirst = most_common(firstOne)
 	cursor.execute('select name from user_table desc limit 20000')
@@ -64,7 +65,6 @@ def getPopularName(index):
 	except:
 		index.write('Cannot write name')
 	index.write('<tr><td>Last</td><td>')
-	#commonLast = "test"
 	try:
 		index.write(commonLast)
 	except:
@@ -73,7 +73,7 @@ def getPopularName(index):
 
 
 def getBots(index):
-	print "To be finished"
+	print "Determining Bots, Celebrities, and Coolness Levels"
 	bots = 0
 	celebrities = 0
 	totalUsers = 0
@@ -87,13 +87,6 @@ def getBots(index):
 		countUsers =  int(cursor2.fetchone()[0])
 		countFollowers = int(cursor3.fetchone()[0])
 		coolness.sort()
-#		for i in range(10):
-#		  if coolness[0][1] == row[0] or coolness[1][1] == row[0] or coolness[2][1] == row[0] or coolness[3][1] == row[0] or coolness[4][1] == row[0] or coolness[5][1] == row[0] or coolness[6][1] == row[0] or coolness[7][1] == row[0] or coolness[8][1] == row[0] or coolness[9][1] == row[0]:
-#			  break
-#		  if coolness[i][0] < countFollowers:
-#		    coolness[i][0] = countFollowers
-#		    coolness[i][1] = row[0]
-#		    break
 		for i in range(toCrawl):
 		  used = 0
 		  for y in range(toCrawl):
@@ -103,28 +96,40 @@ def getBots(index):
 		  if coolness[i][0] < countFollowers and used == 0:
 		 	  coolness[i][0] = countFollowers
 		 	  coolness[i][1] = row[0]
-		if (countUsers+50 < countFollowers):
+		if (countUsers+50 < countFollowers): #A bot is someone with follows more than 50 people that is following him
 			bots = bots+1
-		if (countUsers > countFollowers+50):
+		if (countUsers > countFollowers+50): #A celebritiy is someone with 50 more followers than people he is following
 			celebrities = celebrities+1
 		totalUsers = totalUsers+1
 
 	for i in range(toCrawl):
-	  coolness[i][2] = coolness[i][0]
-	  for y in range(toCrawl):
+	  coolness[i][2] = coolness[i][0] #Initialize everyone's coolness level to the number of followers
+	  for y in range(toCrawl): #Increases B's coolness by half of A's value if A follows B but B doesn't follow A
 	    sql2 = "select follower_id from follower_table where user_id = '%s' and follower_id = '%s'" % (coolness[i][1], coolness[y][1])
-	    #sql2 = "select follower_id from follower_table where user_id = 216393728 and follower_id = 219831583"
 	    cursor2.execute(sql2)
 	    sql3 = "select follower_id from follower_table where user_id = '%s' and follower_id = '%s'" % (coolness[y][1], coolness[i][1])
-	    #sql3 = "select follower_id from follower_table where user_id = 219831583 and follower_id = 216393728"
 	    cursor3.execute(sql3)
-	    #temp = cursor2.fetchone()
-	    #temp2 = cursor3.fetchone()
-	    if cursor2.fetchone() and cursor3.fetchone() is None: #and cursor3.fetchone() is False:
+	    if cursor2.fetchone() and cursor3.fetchone() is None:
 	      coolness[i][2] = (coolness[y][0])/2 + coolness[i][2]
-	print coolness
-
-	index.write('Ratio of Bots and Celebrities <br/> Bots have many more following than followers <br/> Celebrities have many more followers than people followed <br/>')
+	
+	#Creating table for coolness
+	coolness = sorted(coolness, key=operator.itemgetter(2), reverse=True)
+	index.write('<table border = 1>')
+	insertCol('User ID', index)
+	insertCol('Followers', index)
+	insertCol('Coolness level', index)
+	for row in range(toCrawl):
+		index.write('<tr><td>')
+		index.write(str(coolness[row][1]))
+		index.write('</td><td>')
+		index.write(str(coolness[row][0]))
+		index.write('</td><td>')
+		index.write(str(coolness[row][2]))
+		index.write('</td></tr>')
+	index.write('</td></tr></table><br/>')
+  
+	#Creating Table for bots and celebrities
+	index.write('Ratio of Bots and Celebrities<br/>')
 	index.write('<table border = 1>')
 	index.write('<tr><td>Bots</td><td>')
 	index.write(str(bots))
@@ -133,42 +138,37 @@ def getBots(index):
 	index.write('<tr><td>Other Users</td><td>')
 	index.write(str(totalUsers-bots-celebrities))
 	index.write('</td></tr></table><br/>')
-	script = '<script type="text/javascript"> graph = new BAR_GRAPH("hBar"); graph.values = "' + str(bots) + ',' + str(celebrities) + ',' + str(totalUsers) + '"; graph.labels = "Bots, Celebrities, Total Users"; document.write(graph.create()); </script><br/><br/>'
-	
-	
+	script = '<script type="text/javascript"> graph = new BAR_GRAPH("hBar"); graph.values = "' + str(bots) + ',' + str(celebrities) + ',' + str(totalUsers) + '"; graph.labels = "Bots, Celebrities, Other Users"; document.write(graph.create()); </script><br/><br/>'	
 	index.write(script)
-	#print bots
-	#print celebrities
-	#print totalUsers		
+	
 
 def getCommonLocations(index):
 	location = []
 	index.write('Trend of locations of Twitter<br/>')
 	index.write('<table border = 1>')
 	index.write('<tr><td>Followees</td><td>Followed</td></tr>')
-	print "getting locations"
-	cursor.execute('select location, count(*) from user_table group by location having count(*) order by count(*) desc limit 10')
+	print "Getting Common locations"
+	cursor.execute('select location, count(*) from user_table group by location having count(*) order by count(*) desc limit 10') #Get the 10 most common locations
 	for row in cursor:
 		if (row[0]):
 			cursor2.execute("select user_id from user_table where location='%s'" %row[0])
-			print "People in city:  " + row[0]
+			#print "People in city:  " + row[0]
 			index.write('<tr><td>')
 			try:
 				index.write(row[0])
 			except:
 				index.write('Cannot write name')
 			index.write('</td><td>')
-			for row2 in cursor2:
+			for row2 in cursor2: #Select the location where most people from the most populated locations are following (that is not itself)
 				cursor3.execute("select location from user_table where user_id = (select follower_id from follower_table where user_id='%s') order by count(*) desc limit 1" %row2[0])
 				for row3 in cursor3:
 					if (row3[0] and row3[0] != row[0]):
 						location.append(row3[0])
-			print "Followed by:  " + most_common(location)
+			#print "Followed by:  " + most_common(location)
 			try:
 				index.write(most_common(location))
 			except:
 				index.write('Cannot write name')
-			#index.write(most_common(location))
 			index.write('</td></tr>')
 	index.write('</table><br/><br/>')
 
@@ -188,9 +188,9 @@ conn.text_factory = str
 cursor = conn.cursor()
 cursor2 = conn.cursor() 
 cursor3 = conn.cursor()
-#getPopularName(index)
+getPopularName(index)
 getBots(index)
-#getCommonLocations(index)
+getCommonLocations(index)
 cursor.close()
 cursor2.close()
 cursor3.close()
