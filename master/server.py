@@ -33,6 +33,7 @@ is_master = 0 # 	a backup is anyone EXCEPT reala.ece.ubc, and a backup can be a 
 def main(*args):
 
 	global should_continue
+	global is_master
 
 	try:
 		is_backup = (args[2] == 'BACKUP')
@@ -277,100 +278,6 @@ class ControlMessageHandler(SocketServer.BaseRequestHandler):
 			self.request.send(str(is_master));
 		elif 'stop_master' in msg:
 			stop_master_request(is_master)
-
-	
-def find_alive_nodes(lastnode):
-	backupNodesFile=open('replicate_list', 'r')
-	backupNodes = backupNodesFile.read()
-	backupNodesFile.close()
-	nodelist = backupNodes.splitlines()
-
-	from socket import gethostname;	
-	me = gethostname()
-	
-	alivenode = 0
-	for node in nodelist:
-		if (node == lastnode):
-			break
-		elif (node == me):
-			continue # need to skip ourselves
-		elif ( os.system('ping -q -c1 ' + node) == 0):
-			# okay we found a node that is alive
-			# TODO: need to add method in server.py to check if node is serving requests
-			alivenode = node # this means a higher priority node is master, lets tell worker thread
-			break
-			
-	return alivenode
-
-	
-def handle_master_request():
-	# we enter this function if we receive a request from a work to become the new master	
-	# this fetches the hostname of this node
-	from socket import gethostname;	
-	myhostname = gethostname()
-	
-	highernodealive = find_alive_nodes(myhostname)
-	
-	if (highernodealive != 0 ):
-		return highernodealive # alright lets just return name of higher node that is alive and serving requests
-	
-	# if we got this far, then it looks like we gotta become the master!
-	
-	# TODO: start up all server-related stuff
-	is_master = 1
-	return 1
-	
-def stop_current_master(currentMaster):
-	# TODO: tell current master to stop requests while we transfer over database
-	print 'TODO: tell currentmaster to stop accepting new requests'
-
-def announce_new_master(currentMaster):
-	# TODO: tell current master taht we are the new master
-	print 'TODO: tell currentmaster i am new master'
-	
-def get_fresh_database(currentMaster):
-	# we need to SCP awesomeDB from currentMaster to me
-	# problem: we cannot initiate an SCP from planetlab -> reala since we don't have a public/private key pairing
-	# solution: lets just get the backup from anyone
-	if (currentMaster == 'reala.ece.ubc.ca'):
-		currentMaster = find_alive_nodes(' ')
-
-	cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB awesomeDB"
-	os.system(cmd);
-		
-	
-def regain_master_status():
-	# okay we should only be in this method for one of two reasons:
-	# 1. We are REALA, and we just recovered from a failure
-	# 2. We are a BACKUP node, and just recovered from a failure, AND no higher priority nodes are alive
-	currentMaster = find_alive_nodes(' ')
-	
-	stop_current_master(currentMaster)
-	get_fresh_database(currentMaster)
-	
-	# TODO: start up all all master server threads
-	is_master = 1
-	
-	announce_new_master(currentMaster)
-
-
-def check_and_regain_master():
-	# we just recovered from failure
-	# this method is a check to see if we SHOULD be master.
-	# we should be master if all parent/higher priority nodes are DEAD, or if we're REALA
-	from socket import gethostname;	
-	myhostname = gethostname()
-	
-	if(is_backup == 0):
-		regain_master_status()
-	else:
-		alive_parent_node = find_alive_nodes(myhostname)
-		if (alive_parent_node == 0):
-			# no parent nodes alive - we need to be master
-			regain_master_status()
-		else:
-			# there is a parent node that's master. lets just get a database
-			get_fresh_database(find_alive_nodes(' ')) 
 
 
 if __name__ == '__main__': 
