@@ -270,7 +270,7 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 				if not val:
 					if debug:
 						print "We received nothing -exit data handler"
-						break
+					break
 				length = int(val)
 				self.request.send('Ok')
 				if debug:
