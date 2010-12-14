@@ -94,12 +94,12 @@ def handle_master_request(master_status):
 	
 	if (alive_parent_node != 0 ):
 		print 'Bad worker! There already is an active higher-priority master node!'
-		return alive_parent_node # alright lets just return name of higher node that is alive and serving requests
+		return alive_parent_node, master_status # alright lets just return name of higher node that is alive and serving requests
 	
 	# if we got this far, then it looks like we gotta become the master!
 	# TODO: start up all server-related stuff
 	print 'Alright, looks like no higher priority nodes are alive. Time for us become master!'
-	master_status = False
+	master_status = True
 	return 1, master_status
 	
 
