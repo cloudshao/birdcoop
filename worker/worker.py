@@ -185,7 +185,7 @@ def find_alive_master_nodes():
 				sock.send('is_master')
 				master = sock.recv(1024)
 				sock.close()
-				if master:
+				if 'True' in master:
 					print  str(node)+' is a master!'
 					alivenode = node # this means a higher priority node is master, lets tell worker thread
 					break
