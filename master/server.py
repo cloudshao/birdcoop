@@ -29,11 +29,12 @@ announce_count = 0
 response_count = 0
 is_backup = 0 # NOTE: backup and master are NOT mututally exclusive.
 is_master = 0 # 	a backup is anyone EXCEPT reala.ece.ubc, and a backup can be a master if reala is down
+debug = 0
 
 def main(*args):
-
 	global should_continue
 	global is_master
+	global debug
 
 	try:
 		is_backup = (args[2] == 'BACKUP')
@@ -106,6 +107,7 @@ def main(*args):
 	# Not a daemon because we want it to complete its actions properly
 	parser_thread = threading.Thread(target=parse_data_thread)
 	parser_thread.start()
+	parser_thread.daemon = True
 
 	print "Server's started and waiting for input"
 
@@ -115,6 +117,11 @@ def main(*args):
 			for k in clients:
 				print k
 			print 'unique workers seen: ' + str(len(clients))
+		elif 'DEBUG=TRUE' in line:
+			print "turning on debug"
+			debug = 1
+		elif 'DEBUG=FALSE' in line:
+			debug = 0
 		elif 'rate' in line:
 			print 'rates:'
 			for r in rate_history:
@@ -129,7 +136,6 @@ def main(*args):
 		elif 'heap' in line:
 			print guppy.hpy().heap()
 		elif 'exit' in line:
-			should_continue = False
 			recoveryFile = open('recoverycheck', 'w')
 			recoveryFile.write('0') #need to set recovery file to 0, which means we closed properly
 			recoveryFile.close()
@@ -168,21 +174,27 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 		global connection_rate
 
 		announce_count = announce_count + 1
-		
-		if not is_master:
-			print 'We have a received a request from a worker, but we are not a master node.'
-			self.request.send('-1')
-			
-		else:
-			clients[self.request.getpeername()[0]] = 1;
-			
-			try:
-				user = to_crawl.get(block=True, timeout=5)
-				print 'sending ' + str(user)
-				self.request.send(str(user))
-			except Queue.Empty:
-				print 'sending ' + str(0)
-				self.request.send(str(0))
+
+
+		clients[self.request.getpeername()[0]] = 1;
+		while True:
+			if not is_master:
+				print 'We have a received a request from a worker, but we are not a master node.'
+				self.request.send('-1')
+				
+			else:
+				try:
+					buf = self.request.recv(1024)
+					if not buf :
+						break
+					user = to_crawl.get(block=True, timeout=5)
+					if debug:
+						print 'sending ' + str(user)
+					self.request.send(str(user))
+				except Queue.Empty:
+					if debug:
+						print 'sending ' + str(0)
+					self.request.send(str(0))
 
 		self.request.close()
 		connection_rate = connection_rate + 1
@@ -190,17 +202,15 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
 def parse_data_thread():
 
-	global should_continue
-	should_continue = True
-
 	database = sql.AwesomeDatabase()
 	database.create_tables()
 	database.save()
 
-	while should_continue:
-
-		print 'Entered parse_data loop'
-		print 'responses ' + str(responses.qsize())
+	while True:
+	
+		if debug:
+			print 'Entered parse_data loop'
+			print 'responses ' + str(responses.qsize())
 
 		user_data = None
 		try: user_data = responses.get(block=True, timeout=5)
@@ -232,13 +242,15 @@ def parse_data_thread():
 			database.set_crawled(user_id)
 
 			if to_crawl.qsize() == 0:
-				print 'about to commit'
+				if debug:
+					print 'about to commit'
 				database.save()
 				uncrawled_users = database.get_unfollowed_users()
 				for u in uncrawled_users:
 					print 'putting %s to to_crawl' % (u[0],)
 					to_crawl.put(u[0])
-			print 'Data comitted to DB'
+			if debug:
+				print 'Data comitted to DB'
 
 	database.save()
 	database.close()
@@ -248,19 +260,39 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global response_rate
 		global response_count
-		
-		if is_master:
-			response_count = response_count + 1
-			buf = self.request.recv(1024)
-			data = ''
-			while buf:
-				data = data + buf
-				buf = self.request.recv(1024)
-			response = json.loads(data)
-			if response: responses.put(response)
-			self.request.close()
-		response_rate = response_rate + 1
+
+		if debug:
+			print "Response Handler Instantiated"
+		while True:
+			if is_master:
+				response_count = response_count + 1
+				val = self.request.recv(1024)
+				if not val:
+					if debug:
+						print "We received nothing -exit data handler"
+						break
+				length = int(val)
+				self.request.send('Ok')
+				if debug:
+					print "Response received from worker"
+					
+				data = ''
+				counter = int(0)
+				while counter < length:
+					buf = str(self.request.recv(1024))
+					data = data + buf
+					bytes = len(buf)
+					counter = counter + bytes
+				response = json.loads(data)
+				if response: 
+					responses.put(response)
+					response_rate = response_rate + 1
+					if debug:
+						print "Response received Sucessfully"
+						
 		response_count = response_count - 1
+		self.request.close()
+
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 	pass
