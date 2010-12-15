@@ -233,14 +233,14 @@ def parse_data_thread():
 						user['name'], user['location'], 0)
 					database.insert_follower(user['id'], user_id)
 					if user['protected']: database.set_crawled(user['id'])
-			print 'about to commit'
-			database.save()
-			print 'Data comitted to DB'
-			num_uncommitted = 0
 
 			database.set_crawled(user_id)
 
-
+			if  to_crawl.qsize() == 0 or num_uncommitted > 500:
+				print 'about to commit'
+				database.save()
+				print 'Data comitted to DB'
+				num_uncommitted = 0
 
 		if to_crawl.qsize() == 0:
 			uncrawled_users = database.get_unfollowed_users()
