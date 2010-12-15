@@ -280,7 +280,7 @@ class ControlMessageHandler(SocketServer.BaseRequestHandler):
 		elif 'is_master' in msg:
 			self.request.send(str(is_master));
 		elif 'stop_master' in msg:
-			is_master = stop_master_request(is_master)
+			is_master = False;
 
 
 if __name__ == '__main__': 

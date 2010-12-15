@@ -1,5 +1,5 @@
 import request
-#import dummy_request as request
+import dummy_request as request
 import simplejson as json
 import socket
 import sys
