@@ -29,11 +29,13 @@ announce_count = 0
 response_count = 0
 is_backup = 0 # NOTE: backup and master are NOT mututally exclusive.
 is_master = 0 # 	a backup is anyone EXCEPT reala.ece.ubc, and a backup can be a master if reala is down
+parser_thread = None
 
 def main(*args):
 
 	global should_continue
 	global is_master
+	global parser_thread
 
 	try:
 		is_backup = (args[2] == 'BACKUP')
@@ -130,6 +132,7 @@ def main(*args):
 			print guppy.hpy().heap()
 		elif 'exit' in line:
 			should_continue = False
+			parser_thread.join()
 			recoveryFile = open('recoverycheck', 'w')
 			recoveryFile.write('0') #need to set recovery file to 0, which means we closed properly
 			recoveryFile.close()
@@ -142,6 +145,7 @@ def main(*args):
 
 		else:
 			print 'Did not understand your command'
+	
 
 	print 'Exiting'
 	return 0
@@ -271,6 +275,8 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 class ControlMessageHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global is_master
+		global parser_thread
+		global should_continue
 		
 		msg = self.request.recv(1024)
 		print 'Received a control message: '+msg
@@ -278,9 +284,25 @@ class ControlMessageHandler(SocketServer.BaseRequestHandler):
 			status,is_master = recovery.handle_master_request(is_master)
 			self.request.send(str(status))
 		elif 'is_master' in msg:
-			self.request.send(str(is_master));
+			self.request.send(str(is_master))
 		elif 'stop_master' in msg:
-			is_master = False;
+			is_master = False
+		elif 'stop_db' in msg:
+			should_continue = False
+			if parser_thread:
+				parser_thread.join()
+				parser_thread = None
+			self.request.send(str('db_stopped'))
+			print 'Stopped DB writes to transfer DB file.'
+		elif 'start_db' in msg:
+			should_continue = True
+			if not parser_thread:
+				# Start a thread for parsing
+				# Not a daemon because we want it to complete its actions properly
+				parser_thread = threading.Thread(target=parse_data_thread)
+				parser_thread.start()
+			print 'DB writes enabled again.'
+			
 
 
 if __name__ == '__main__': 

@@ -51,10 +51,8 @@ def find_alive_master_nodes(lastnode):
 	for node in nodelist:
 
 		if (lastnode in node):
-			print 'list stopped at me. breaking...'
 			break
 		elif (me in node):
-			print 'this node is ME'
 			continue # need to skip ourselves
 		elif ( os.system('ping -q -c1 ' + node) == 0):
 			# okay we found a node that is alive
@@ -143,10 +141,15 @@ def get_fresh_database(currentMaster):
 	print 'Fetching a clean database file from another node'
 	if (currentMaster == 'reala.ece.ubc.ca'):
 		currentMaster = find_alive_nodes(' ') # we can't SCP from reala cuz we don't have shared key
-
-	cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB awesomeDB"
-	os.system(cmd);
-	print 'Fresh DB fetched successfully.'
+	try:
+		cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB awesomeDB"
+		os.system(cmd);
+		cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB-journal awesomeDB-journal"
+		os.system(cmd);
+		print 'Fresh DB fetched successfully.'
+	except: 
+		print 'Could not transfer DB file.'
+		pass
 	
 	
 def regain_master_status(master_status):
@@ -157,12 +160,14 @@ def regain_master_status(master_status):
 	print 'Finding and stopping current master...'
 	currentMaster = find_alive_master_nodes(' ')
 	if (currentMaster != 0):
+		stop_master_db(currentMaster)
 		stop_current_master(currentMaster)
 		print 'Fetching a fresh database file to replace our corrupted one'
 		get_fresh_database(currentMaster)
 	
 		print 'Telling everyone that we are new master.'
 		announce_new_master(currentMaster)
+		start_master_db(currentMaster)
 		print 'We have successfully regained master status!'
 		
 	# TODO: start up all all master server threads
@@ -170,6 +175,22 @@ def regain_master_status(master_status):
 	master_status = True
 	return master_status
 
+def stop_master_db(current_master):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.connect((current_master,CONTROL_PORT))
+	print 'Telling master to stop writing to DB while transfering.'
+	sock.send('stop_db')
+	done = sock.recv(1024)
+	if 'db_stopped' in done:
+		return
+	else:
+		print 'ERROR: db could not be stopped.'
+		
+def start_master_db(current_master):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.connect((current_master,CONTROL_PORT))
+	print 'DB transfer complete. Telling master to start DB writing again.'
+	sock.send('start_db')
 
 def check_and_regain_master(master_status, backup_status):
 	# we just recovered from failure
@@ -190,6 +211,10 @@ def check_and_regain_master(master_status, backup_status):
 		else:
 			# there is a parent node that's master. lets just get a database
 			print 'There is a parent node alive. No need to become master.'
-			get_fresh_database(find_alive_nodes(' '))
+			current_master = find_alive_nodes(' ')
+			stop_master_db(current_master)
+			get_fresh_database(current_master)
+			start_master_db(current_master)
+			
 	return master_status
 	
