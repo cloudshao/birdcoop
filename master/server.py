@@ -181,7 +181,7 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 			clients[self.request.getpeername()[0]] = 1;
 			
 			try:
-				user = to_crawl.get(block=True, timeout=5)
+				user = to_crawl.get(block=False)
 				print 'sending ' + str(user)
 				self.request.send(str(user))
 			except Queue.Empty:
@@ -234,19 +234,18 @@ def parse_data_thread():
 
 			database.set_crawled(user_id)
 
-			if to_crawl.qsize() == 0 or num_uncommitted > 500:
+			if  to_crawl.qsize() or num_uncommitted > 500:
 
 				print 'about to commit'
 				database.save()
 				print 'Data comitted to DB'
-
 				num_uncommitted = 0
 
-				if to_crawl.qsize() == 0:
-					uncrawled_users = database.get_unfollowed_users()
-					for u in uncrawled_users:
-						print 'putting %s to to_crawl' % (u[0],)
-						to_crawl.put(u[0])
+		if to_crawl.qsize() == 0:
+			uncrawled_users = database.get_unfollowed_users()
+			for u in uncrawled_users:
+				print 'putting %s to to_crawl' % (u[0],)
+				to_crawl.put(u[0])
 
 	database.save()
 	database.close()
