@@ -234,7 +234,7 @@ def parse_data_thread():
 
 			database.set_crawled(user_id)
 
-			if  to_crawl.qsize() or num_uncommitted > 500:
+			if  to_crawl.qsize() == 0 or num_uncommitted > 500:
 
 				print 'about to commit'
 				database.save()
