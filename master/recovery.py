@@ -88,19 +88,20 @@ def stop_master_request(master_status):
 def handle_master_request(master_status):
 	# we enter this function if we receive a request from a work to become the new master	
 	# this fetches the hostname of this node
-	print 'Received request to become a master.'
-	myhostname = gethostname()
-	print 'Checking if any higher priority nodes are alive...'
-	alive_parent_node = find_alive_nodes(myhostname)
-	
-	if (alive_parent_node != 0 ):
-		print 'Bad worker! There already is an active higher-priority master node!'
-		return alive_parent_node, master_status # alright lets just return name of higher node that is alive and serving requests
-	
-	# if we got this far, then it looks like we gotta become the master!
-	# TODO: start up all server-related stuff
-	print 'Alright, looks like no higher priority nodes are alive. Time for us become master!'
-	master_status = True
+	if master_status: 
+		print 'Received request to become a master.'
+		myhostname = gethostname()
+		print 'Checking if any higher priority nodes are alive...'
+		alive_parent_node = find_alive_nodes(myhostname)
+		
+		if (alive_parent_node != 0 ):
+			print 'Bad worker! There already is an active higher-priority master node!'
+			return alive_parent_node, master_status # alright lets just return name of higher node that is alive and serving requests
+		
+		# if we got this far, then it looks like we gotta become the master!
+		# TODO: start up all server-related stuff
+		print 'Alright, looks like no higher priority nodes are alive. Time for us become master!'
+		master_status = True
 	return 1, master_status
 	
 
@@ -139,14 +140,20 @@ def get_fresh_database(currentMaster):
 	# problem: we cannot initiate an SCP from planetlab -> reala since we don't have a public/private key pairing
 	# solution: lets just get the backup from anyone
 	print 'Fetching a clean database file from another node'
-	if (currentMaster == 'reala.ece.ubc.ca'):
-		currentMaster = find_alive_nodes(' ') # we can't SCP from reala cuz we don't have shared key
 	try:
-		cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB awesomeDB"
-		os.system(cmd);
-		cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB-journal awesomeDB-journal"
-		os.system(cmd);
-		print 'Fresh DB fetched successfully.'
+		if (currentMaster == 'reala.ece.ubc.ca'):
+			myhostname = gethostname()
+			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			sock.connect((currentMaster,CONTROL_PORT))
+			print 'Asking reala to send us the DB.'
+			sock.send('send_db;'+myhostname)
+			done = sock.recv(1024)
+		else:
+			cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB awesomeDB"
+			os.system(cmd);
+			cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB-journal awesomeDB-journal"
+			os.system(cmd);
+			print 'Fresh DB fetched successfully.'
 	except: 
 		print 'Could not transfer DB file.'
 		pass
@@ -160,14 +167,13 @@ def regain_master_status(master_status):
 	print 'Finding and stopping current master...'
 	currentMaster = find_alive_master_nodes(' ')
 	if (currentMaster != 0):
-		stop_master_db(currentMaster)
 		stop_current_master(currentMaster)
+		stop_master_db(currentMaster)
 		print 'Fetching a fresh database file to replace our corrupted one'
 		get_fresh_database(currentMaster)
 	
 		print 'Telling everyone that we are new master.'
 		announce_new_master(currentMaster)
-		start_master_db(currentMaster)
 		print 'We have successfully regained master status!'
 		
 	# TODO: start up all all master server threads
@@ -191,6 +197,18 @@ def start_master_db(current_master):
 	sock.connect((current_master,CONTROL_PORT))
 	print 'DB transfer complete. Telling master to start DB writing again.'
 	sock.send('start_db')
+
+def send_db(remote_host):
+	try:
+		cmd = "scp -i group2@eece411 awesomeDB usf_ubc_gnutella1@"+remote_host+":~/birdcoop/master/awesomeDB"
+		os.system(cmd);
+		cmd = "scp -i group2@eece411 awesomeDB-journal usf_ubc_gnutella1@"+remote_host+":~/birdcoop/master/awesomeDB-journal"
+		os.system(cmd);
+		print 'Fresh DB fetched successfully.'
+	except:
+		print 'Could not transfer DB file.'
+		pass
+	
 
 def check_and_regain_master(master_status, backup_status):
 	# we just recovered from failure

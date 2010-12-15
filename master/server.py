@@ -289,6 +289,10 @@ class ControlMessageHandler(SocketServer.BaseRequestHandler):
 			self.request.send(str(is_master))
 		elif 'stop_master' in msg:
 			is_master = False
+		elif 'send_db' in msg:
+			thehost = msg.split(';')
+			recovery.send_db(thehost[1])
+			self.request.send(str('db_sent'))
 		elif 'stop_db' in msg:
 			should_continue = False
 			if parser_thread:
