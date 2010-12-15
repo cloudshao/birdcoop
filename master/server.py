@@ -134,7 +134,8 @@ def main(*args):
 			print 'is_master: '+str(is_master)
 		elif 'exit' in line:
 			should_continue = False
-			parser_thread.join()
+			if not (parser_thread == None):
+				parser_thread.join()
 			recoveryFile = open('recoverycheck', 'w')
 			recoveryFile.write('0') #need to set recovery file to 0, which means we closed properly
 			recoveryFile.close()
