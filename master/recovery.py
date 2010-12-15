@@ -88,7 +88,7 @@ def stop_master_request(master_status):
 def handle_master_request(master_status):
 	# we enter this function if we receive a request from a work to become the new master	
 	# this fetches the hostname of this node
-	if master_status: 
+	if not master_status: 
 		print 'Received request to become a master.'
 		myhostname = gethostname()
 		print 'Checking if any higher priority nodes are alive...'
@@ -148,6 +148,7 @@ def get_fresh_database(currentMaster):
 			print 'Asking reala to send us the DB.'
 			sock.send('send_db;'+myhostname)
 			done = sock.recv(1024)
+			sock.close()
 		else:
 			cmd = "scp -i group2@eece411 usf_ubc_gnutella1@"+currentMaster+":~/birdcoop/master/awesomeDB awesomeDB"
 			os.system(cmd);
@@ -187,6 +188,7 @@ def stop_master_db(current_master):
 	print 'Telling master to stop writing to DB while transfering.'
 	sock.send('stop_db')
 	done = sock.recv(1024)
+	sock.close()
 	if 'db_stopped' in done:
 		return
 	else:
@@ -197,6 +199,7 @@ def start_master_db(current_master):
 	sock.connect((current_master,CONTROL_PORT))
 	print 'DB transfer complete. Telling master to start DB writing again.'
 	sock.send('start_db')
+	sock.close()
 
 def send_db(remote_host):
 	try:

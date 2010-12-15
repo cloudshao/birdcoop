@@ -130,6 +130,8 @@ def main(*args):
 			print 'response_handlers: ' + str(response_count)
 		elif 'heap' in line:
 			print guppy.hpy().heap()
+		elif 'master' in line:
+			print 'is_master: '+str(is_master)
 		elif 'exit' in line:
 			should_continue = False
 			parser_thread.join()
