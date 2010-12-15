@@ -151,24 +151,33 @@ def getCommonLocations(index):
 	cursor.execute('select location, count(*) from user_table group by location having count(*) order by count(*) desc limit 10') #Get the 10 most common locations
 	for row in cursor:
 		if (row[0]):
-			cursor2.execute("select user_id from user_table where location='%s'" %row[0])
-			#print "People in city:  " + row[0]
+			#cursor2.execute("select user_id from user_table where location='%s'" %row[0])
+			print "People in city:  " + row[0]
 			index.write('<tr><td>')
 			try:
 				index.write(row[0])
 			except:
 				index.write('Cannot write name')
 			index.write('</td><td>')
-			for row2 in cursor2: #Select the location where most people from the most populated locations are following (that is not itself)
-				cursor3.execute("select location from user_table where user_id = (select follower_id from follower_table where user_id='%s') order by count(*) desc limit 1" %row2[0])
-				for row3 in cursor3:
-					if (row3[0] and row3[0] != row[0]):
-						location.append(row3[0])
+			#for row2 in cursor2: #Select the location where most people from the most populated locations are following (that is not itself)
+			#	cursor3.execute("select location from user_table where user_id like (select follower_id from follower_table where user_id like '%s') order by count(*) desc limit 1" %row2[0])
+			#	for row3 in cursor3:
+			#		if (row3[0] and row3[0] != row[0]):
+			#			location.append(row3[0])
 			#print "Followed by:  " + most_common(location)
+			locationVar = '%' + row[0] + '%'
+			print locationVar
+			cursor3.execute("select location from user_table where user_id in (select follower_id from follower_table where user_id in (select user_id from user_table where location like '%s')) group by location order by count(location) desc" %locationVar)
+			for row3 in cursor3:
+				if (row3[0] and row3[0] != row[0]):
+					location = row3[0]
 			try:
-				index.write(most_common(location))
+				#index.write(most_common(location))
+				index.write(location)
+				location = ''
 			except:
-				index.write('Cannot write name')
+				location = ''
+				index.write('')
 			index.write('</td></tr>')
 	index.write('</table><br/><br/>')
 
@@ -188,8 +197,8 @@ conn.text_factory = str
 cursor = conn.cursor()
 cursor2 = conn.cursor() 
 cursor3 = conn.cursor()
-getPopularName(index)
-getBots(index)
+#getPopularName(index)
+#getBots(index)
 getCommonLocations(index)
 cursor.close()
 cursor2.close()

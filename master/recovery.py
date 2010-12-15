@@ -1,6 +1,7 @@
 import os
 import sys
 import string
+import socket
 from socket import gethostname
 
 CONTROL_PORT = 5632
