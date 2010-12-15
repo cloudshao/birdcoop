@@ -35,7 +35,7 @@ class AwesomeDatabase():
    def get_unfollowed_users(self):
       ''' Gets a list of users that have not been crawled '''
       cursor = self.conn.cursor()
-      cursor.execute('SELECT user_id FROM user_table WHERE crawled=0')
+      cursor.execute('SELECT user_id FROM user_table WHERE crawled=0 LIMIT 10000')
       users = cursor.fetchall()
       cursor.close()
       return users
