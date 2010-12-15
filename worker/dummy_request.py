@@ -26,9 +26,10 @@ def __get_user_list(user_id):
    for j in range(100):
       temp_u = {}
       temp_u['id'] = random.randint(1, 99999999)
+      temp_u['screen_name'] = 'johndoe88lolz'
       temp_u['name'] = 'John Doe'
       temp_u['location'] = 'Here'
-      temp_u['description'] = 'My name is john doe hello everyone'
+      temp_u['protected'] = 0
       users.append(temp_u)
 
    return __clean(users), False
@@ -44,8 +45,6 @@ def __clean(user_list):
       if 'name' in user: temp['name'] = user['name']
       if 'screen_name' in user: temp['screen_name'] = user['screen_name']
       if 'location' in user: temp['location'] = user['location']
-      if 'description' in user: temp['description'] = user['description']
       if 'protected' in user: temp['protected'] = user['protected']
-      if 'status' in user: temp['status'] = user['status'].copy()
       temp_list.append(temp)
    return temp_list
