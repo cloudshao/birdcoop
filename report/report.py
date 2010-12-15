@@ -146,19 +146,26 @@ def getCommonLocations(index):
 	location = []
 	index.write('Trend of locations of Twitter<br/>')
 	index.write('<table border = 1>')
-	index.write('<tr><td>Followees</td><td>Followed</td></tr>')
+	index.write('<tr><td>Original location</td><td>Users in original location<td>Location being followed</td><td>Users in this trend</td></tr>')
 	print "Getting Common locations"
-	cursor.execute('select location, count(*) from user_table group by location having count(*) order by count(*) desc limit 10') #Get the 10 most common locations
+	cursor.execute('select location, count(*) from user_table group by location having count(*) order by count(*) desc limit 25') #Get the 10 most common locations
+	counter = 0
+	locTrends = [[0 for col in range(4)] for row in range(100)]
 	for row in cursor:
 		if (row[0]):
 			#cursor2.execute("select user_id from user_table where location='%s'" %row[0])
 			print "People in city:  " + row[0]
-			index.write('<tr><td>')
+			#index.write('<tr><td>')
 			try:
-				index.write(row[0])
+				locTrends[counter][0] = row[0]
+				locTrends[counter][1] = row[1]
+				#index.write(row[0])
+				#index.write('</td><td>')
+				#index.write(str(row[1]))
 			except:
-				index.write('Cannot write name')
-			index.write('</td><td>')
+				print "error"
+				#index.write('Cannot write name')
+			#index.write('</td><td>')
 			#for row2 in cursor2: #Select the location where most people from the most populated locations are following (that is not itself)
 			#	cursor3.execute("select location from user_table where user_id like (select follower_id from follower_table where user_id like '%s') order by count(*) desc limit 1" %row2[0])
 			#	for row3 in cursor3:
@@ -167,18 +174,44 @@ def getCommonLocations(index):
 			#print "Followed by:  " + most_common(location)
 			locationVar = '%' + row[0] + '%'
 			print locationVar
-			cursor3.execute("select location from user_table where user_id in (select follower_id from follower_table where user_id in (select user_id from user_table where location like '%s')) group by location order by count(location) desc" %locationVar)
+			location = ''
+			cursor3.execute("select location, count(location) from user_table where user_id in (select follower_id from follower_table where user_id in (select user_id from user_table where location like '%s')) group by location order by count(location) desc" %locationVar)
 			for row3 in cursor3:
-				if (row3[0] and row3[0] != row[0]):
+				if (row3[0]):
 					location = row3[0]
+					num = row3[1]
+					if (row3[0] != row[0] and row3[0] != ''):
+						break
+			if location == '':
+				num = 0
 			try:
 				#index.write(most_common(location))
-				index.write(location)
-				location = ''
+				#index.write(location)
+				#index.write('</td><td>')
+				#index.write(str(num))
+				print location
+				locTrends[counter][2] = location
+				locTrends[counter][3] = num	
 			except:
-				location = ''
-				index.write('')
-			index.write('</td></tr>')
+				print "error"
+				#index.write('Cannot Write Name')
+				#location = 'Cannot Write Name'
+			#coolness = sorted(coolness, key=operator.itemgetter(2), reverse=True)
+			
+			#index.write('</td></tr>')
+		counter = counter+1
+	locTrends = sorted(locTrends, key=operator.itemgetter(3), reverse = True)
+	for row in range(100):
+		if locTrends[row][0] == 0:
+			break
+		index.write('<tr><td>')
+		index.write(str(locTrends[row][0]))
+		index.write('</td><td>')
+		index.write(str(locTrends[row][1]))
+		index.write('</td><td>')
+		index.write(str(locTrends[row][2]))
+		index.write('</td><td>')
+		index.write(str(locTrends[row][3]))
 	index.write('</table><br/><br/>')
 
 def buildHeader(index):
