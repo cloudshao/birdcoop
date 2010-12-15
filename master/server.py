@@ -215,16 +215,18 @@ def parse_data_thread():
 			if 'followers' in user_data:
 				follower_data = user_data['followers']
 				for user in follower_data :
-					database.insert_user(user['id'], user['name'],
-						user['location'], 0)
+					database.insert_user(user['id'], user['screen_name'],
+						user['name'], user['location'], 0)
 					database.insert_follower(user_id, user['id'])
+					if user['protected']: database.set_crawled(user['id'])
 
 			if 'followees' in user_data:
 				followee_data = user_data['followees']
 				for user in followee_data:
-					database.insert_user(user['id'], user['name'],
-						user['location'], 0)
+					database.insert_user(user['id'], user['screen_name'],
+						user['name'], user['location'], 0)
 					database.insert_follower(user['id'], user_id)
+					if user['protected']: database.set_crawled(user['id'])
 
 			database.set_crawled(user_id)
 
