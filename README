@@ -1,0 +1,20 @@
+Birdcoop is a distributed Twitter crawler
+
+It is composed of two distinct types of components: master, and workers. A master can be started on any publicly reachable machine, and workers are lightweight apps that run on any machine able to reach the master.
+
+Some other features include:
+* Master redundancy
+* Data backup/replication
+* Report generation from crawled data
+* Crawls up to 15000 users per worker per hour
+
+Dependencies:
+* Python 2.6 (or simplejson)
+
+To run:
+* Master
+ * cd master
+ * python server.py <id of user to start from>
+* Worker
+ * cd worker
+ * python worker.py <hostname of master>
