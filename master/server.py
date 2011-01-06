@@ -246,8 +246,8 @@ def parse_data_thread():
 		if to_crawl.qsize() == 0:
 			uncrawled_users = database.get_unfollowed_users()
 			for u in uncrawled_users:
-				print 'putting %s to to_crawl' % (u[0],)
-				to_crawl.put(u[0])
+				print 'putting %s to to_crawl' % (u,)
+				to_crawl.put(u)
 
 	database.save()
 	database.close()

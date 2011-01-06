@@ -38,7 +38,7 @@ class AwesomeDatabase():
       cursor.execute('SELECT user_id FROM user_table WHERE crawled=0 LIMIT 10000')
       users = cursor.fetchall()
       cursor.close()
-      return users
+      return [u[0] for u in users]
 
    def insert_user(self, user_id, screen_name, name, location, crawled):
       ''' Inserts a user '''
