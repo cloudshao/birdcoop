@@ -6,7 +6,8 @@ import SocketServer
 import string
 import threading
 import time
-import sql
+#import sql
+import filedb as sql
 import sqlite3
 import sys
 import simplejson as json
