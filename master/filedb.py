@@ -28,7 +28,8 @@ class AwesomeDatabase():
       ''' Inserts a user into the file '''
       values = [unicode(user_id), unicode(screen_name), unicode(name),
                 unicode(location), unicode(crawled), unicode(time.time()),]
-      self.userfile.write(u','.join(values) + u'\n')
+      string_to_write = (u','.join(values) + u'\n').encode('utf-8')
+      self.userfile.write(string_to_write)
       if user_id not in self.crawled: self.crawled[user_id] = False
 
    def set_crawled(self, user_id):
@@ -39,5 +40,6 @@ class AwesomeDatabase():
       ''' Inserts a follower-followee relation '''
       values = [unicode(user_id), unicode(follower_id),
                 unicode(time.time()),]
-      self.followerfile.write(u','.join(values) + u'\n')
+      string_to_write = (u','.join(values) + u'\n').encode('utf-8')
+      self.followerfile.write(string_to_write)
 
