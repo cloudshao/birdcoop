@@ -25,61 +25,61 @@ def main(*args):
 		print 'Usage: python test_worker.py <master>'
 		return 1
 
-   # Keep processing until rate limit is reached
-   rate_limit_reached = False
-   while not rate_limit_reached:
+	# Keep processing until rate limit is reached
+	rate_limit_reached = False
+	while not rate_limit_reached:
 
-      print 'Current host: '+str(host)
-      try:
-         # Get the user to crawl from the master
-         print 'Getting user to crawl...'
-         user = announce(host, ANNOUNCE_PORT)	
-         print 'Got user '+str(user)
-      except:
-         user = -1
-         print 'Received exception. Looking for another host.'
-         host = find_alive_master_nodes()
-         while True:
-            if (host == 0):
-               print 'Could not find any replicas that are master nodes. Lets request highest priority replica to become master.'
-               host = find_alive_nodes()
-               if (host == 0):
-                  print 'No replica nodes are alive. Lets quit.'
-                  sys.exit()
-               sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-               sock.connect((host,CONTROL_PORT))
-               print 'Requesting node '+str(host)+' to become new master'
-               sock.send('become_master')
-               status = sock.recv(1024)
-               sock.close()
-               if ('1' not in status):
-                  print 'It seems there is already another master up.'
-                  host = find_alive_master_nodes()
-               else:
-                  print 'Great, host '+str(host)+' is the new master node!'
-                  user = announce(host, ANNOUNCE_PORT)
-                  
-            else:
-               break
-            
-         
-      # did we get a -1 response? if so we need to look for the new master
-      if (user == -1):
-         print 'Whoops, it looks like we contacted a node that is not a master. Lets try another one.'
-         host = find_alive_master_nodes()
+		print 'Current host: '+str(host)
+		try:
+			# Get the user to crawl from the master
+			print 'Getting user to crawl...'
+			user = announce(host, ANNOUNCE_PORT)	
+			print 'Got user '+str(user)
+		except:
+			user = -1
+			print 'Received exception. Looking for another host.'
+			host = find_alive_master_nodes()
+			while True:
+				if (host == 0):
+					print 'Could not find any replicas that are master nodes. Lets request highest priority replica to become master.'
+					host = find_alive_nodes()
+					if (host == 0):
+						print 'No replica nodes are alive. Lets quit.'
+						sys.exit()
+					sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+					sock.connect((host,CONTROL_PORT))
+					print 'Requesting node '+str(host)+' to become new master'
+					sock.send('become_master')
+					status = sock.recv(1024)
+					sock.close()
+					if ('1' not in status):
+						print 'It seems there is already another master up.'
+						host = find_alive_master_nodes()
+					else:
+						print 'Great, host '+str(host)+' is the new master node!'
+						user = announce(host, ANNOUNCE_PORT)
+						
+				else:
+					break
+				
+			
+		# did we get a -1 response? if so we need to look for the new master
+		if (user == -1):
+			print 'Whoops, it looks like we contacted a node that is not a master. Lets try another one.'
+			host = find_alive_master_nodes()
 
-      # Master returns 0 to signal 'do nothing'
-      elif user > 0:
-         # Ask twitter for the user's information
-         response,limit_reached = crawl(user)
-         if (limit_reached):
-            rate_limit_reached = True
-         try:
-            # Return the user's information to the master
-            respond(response, host, REPLY_PORT)
-         except:
-            print 'There was a server timeout.'
-      print 'just crawled: '+str(user)
+		# Master returns 0 to signal 'do nothing'
+		elif user > 0:
+			# Ask twitter for the user's information
+			response,limit_reached = crawl(user)
+			if (limit_reached):
+				rate_limit_reached = True
+			try:
+				# Return the user's information to the master
+				respond(response, host, REPLY_PORT)
+			except:
+				print 'There was a server timeout.'
+		print 'just crawled: '+str(user)
 		
 	print 'Halting.'
 	return 0
