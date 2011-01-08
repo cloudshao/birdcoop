@@ -27,7 +27,8 @@ def main(*args):
 
 	# Keep processing until rate limit is reached
 	rate_limit_reached = False
-	while not rate_limit_reached:
+	master_signaled_halt = False
+	while not rate_limit_reached and not master_signaled_halt:
 
 		print 'Current host: '+str(host)
 		try:
@@ -79,6 +80,11 @@ def main(*args):
 				respond(response, host, REPLY_PORT)
 			except:
 				print 'There was a server timeout.'
+
+		# Master returns 0 to signal 'do nothing'
+		elif user == 0:
+			master_signaled_halt = True
+
 		print 'just crawled: '+str(user)
 		
 	print 'Halting.'
