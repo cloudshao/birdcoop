@@ -11,7 +11,6 @@ import filedb as sql
 import sqlite3
 import sys
 import simplejson as json
-import gc
 import recovery
 
 # initialize the connection, and start up our crawl list, also make the lock for renewing the crawl list
@@ -26,8 +25,6 @@ lock = threading.RLock()
 clients = {}
 rate_history = []
 connection_rate, response_rate = 0, 0
-announce_count = 0
-response_count = 0
 is_backup = 0 # NOTE: backup and master are NOT mututally exclusive.
 is_master = 0 # 	a backup is anyone EXCEPT reala.ece.ubc, and a backup can be a master if reala is down
 parser_thread = None
@@ -125,10 +122,8 @@ def main(*args):
 			print ('connections, responses this hour: ' +
 					 str(connection_rate) + ', ' + str(response_rate))
 		elif 'lists' in line:
-			print 'crawl_list: ' + str(len(crawl_list))
+			print 'crawl_list: ' + str(len(to_crawl))
 			print 'responses: ' + str(responses.qsize())
-			print 'announce_handlers: ' + str(announce_count)
-			print 'response_handlers: ' + str(response_count)
 		elif 'heap' in line:
 			print guppy.hpy().heap()
 		elif 'master' in line:
@@ -141,16 +136,11 @@ def main(*args):
 			recoveryFile.write('0') #need to set recovery file to 0, which means we closed properly
 			recoveryFile.close()
 			break
-		elif 'garbage' in line:
-			x = gc.collect()
-			print x
 		elif not line.strip():
 			print 'type "exit" to terminate'
-
 		else:
 			print 'Did not understand your command'
 	
-
 	print 'Exiting'
 	return 0
 
@@ -172,11 +162,8 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
 	def handle(self):
 		global normal_start
-		global announce_count
 		global connection_rate
 
-		announce_count = announce_count + 1
-		
 		if not is_master:
 			print 'We have a received a request from a worker, but we are not a master node.'
 			self.request.send('-1')
@@ -194,7 +181,6 @@ class GetPersonToCrawlHandler(SocketServer.BaseRequestHandler):
 
 		self.request.close()
 		connection_rate = connection_rate + 1
-		announce_count = announce_count - 1
 
 def parse_data_thread():
 
@@ -257,10 +243,8 @@ def parse_data_thread():
 class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 	def handle(self):
 		global response_rate
-		global response_count
 		
 		if is_master:
-			response_count = response_count + 1
 			buf = self.request.recv(1024)
 			data = ''
 			while buf:
@@ -270,7 +254,6 @@ class ReceiveDataHandler(SocketServer.BaseRequestHandler):
 			if response: responses.put(response)
 			self.request.close()
 		response_rate = response_rate + 1
-		response_count = response_count - 1
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 	pass
