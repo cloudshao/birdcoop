@@ -122,7 +122,7 @@ def main(*args):
 			print ('connections, responses this hour: ' +
 					 str(connection_rate) + ', ' + str(response_rate))
 		elif 'lists' in line:
-			print 'crawl_list: ' + str(len(to_crawl))
+			print 'crawl_list: ' + str(to_crawl.qsize())
 			print 'responses: ' + str(responses.qsize())
 		elif 'heap' in line:
 			print guppy.hpy().heap()
