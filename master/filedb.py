@@ -3,7 +3,14 @@ import time
 class AwesomeDatabase():
 
    def __init__(self):
+
+      # An in-memory dict of all users
+      # User not in dict: they have not been written to file
+      # User in dict, False: they have been written to file but not crawled
+      # User in dict, True: they have been written to file and crawled
       self.crawled = {}
+
+      # Output files that contain the two tables we had in the DB
       self.userfile = open('awesome_users', 'w')
       self.followerfile = open('awesome_followers', 'w')
 
@@ -26,11 +33,18 @@ class AwesomeDatabase():
 
    def insert_user(self, user_id, screen_name, name, location, crawled):
       ''' Inserts a user into the file '''
-      values = [unicode(user_id), unicode(screen_name), unicode(name),
-                unicode(location), unicode(crawled), unicode(time.time()),]
-      string_to_write = (u','.join(values) + u'\n').encode('utf-8')
-      self.userfile.write(string_to_write)
-      if user_id not in self.crawled: self.crawled[user_id] = False
+
+      if user_id not in self.crawled:
+
+         # Add user_id to list and set it to not crawled
+         self.crawled[user_id] = False
+
+         # Write user to output file
+         values = [unicode(user_id), unicode(screen_name), unicode(name),
+                   unicode(location), unicode(crawled),
+                   unicode(time.time()),]
+         string_to_write = (u','.join(values) + u'\n').encode('utf-8')
+         self.userfile.write(string_to_write)
 
    def set_crawled(self, user_id):
       ''' Sets a user to 'crawled' '''
