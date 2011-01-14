@@ -9,7 +9,7 @@ Some other features include:
 * Crawls up to 15000 users per worker per hour
 
 Dependencies:
-* Python 2.6 (or simplejson)
+* Python 2.6 (or Python 2.5 with simplejson)
 
 To run:
 * Master
